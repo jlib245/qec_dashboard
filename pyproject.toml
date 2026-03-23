@@ -1,0 +1,20 @@
+[project]
+name = "qec-dashboard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "qec-sim",
+    "fastapi>=0.135.1",
+    "uvicorn>=0.42.0",
+]
+
+[tool.uv.sources]
+qec-sim = { path = "../qec", editable = true }
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+]
