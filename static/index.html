@@ -1,1 +1,239 @@
-<html><body>test</body></html>
+<!DOCTYPE html>
+<!-- static/index.html -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>QEC Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.5rem; }
+    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 0.85rem; color: #555; }
+    input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 10px 24px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #93c5fd; cursor: not-allowed; }
+    #result-ler { font-size: 1.2rem; margin: 16px 0; }
+    #error-msg { color: red; margin: 8px 0; }
+    .grids { display: flex; gap: 20px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h1>QEC Simulator Dashboard</h1>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Distance (d)</label>
+      <input type="number" id="distance" value="3" min="3" max="7" step="2">
+    </div>
+    <div class="control-group">
+      <label>Rounds</label>
+      <input type="number" id="rounds" value="3" min="1" max="10">
+    </div>
+    <div class="control-group">
+      <label>Shots</label>
+      <input type="number" id="shots" value="1000" min="100" max="10000" step="100">
+    </div>
+    <div class="control-group">
+      <label>p_gate</label>
+      <input type="number" id="p_gate" value="0.01" min="0" max="0.1" step="0.001">
+    </div>
+    <div class="control-group">
+      <label>p_meas</label>
+      <input type="number" id="p_meas" value="0.01" min="0" max="0.1" step="0.001">
+    </div>
+    <div class="control-group">
+      <label>p_leak</label>
+      <input type="number" id="p_leak" value="0.0" min="0" max="0.2" step="0.01">
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center;">
+    <button id="run-btn" onclick="runSimulation()">시뮬레이션 실행</button>
+    <button id="viz-btn" onclick="runVisualize()" style="background:#7c3aed;">단일 Shot 시각화</button>
+  </div>
+  <div id="error-msg"></div>
+  <div id="result-ler"></div>
+  <div id="result-viz" style="font-size:1.1rem;margin:8px 0;"></div>
+  <div class="grids">
+    <div>
+      <div id="plot-layout" style="width:480px;height:440px;"></div>
+      <div id="layout-round-btns" style="text-align:center;margin-top:4px;"></div>
+    </div>
+  </div>
+
+  <script>
+    async function runSimulation() {
+      const btn = document.getElementById("run-btn");
+      const errEl = document.getElementById("error-msg");
+      errEl.innerText = "";
+      btn.disabled = true;
+      btn.innerText = "실행 중...";
+
+      const payload = {
+        distance: parseInt(document.getElementById("distance").value),
+        rounds:   parseInt(document.getElementById("rounds").value),
+        shots:    parseInt(document.getElementById("shots").value),
+        p_gate:   parseFloat(document.getElementById("p_gate").value),
+        p_meas:   parseFloat(document.getElementById("p_meas").value),
+        p_leak:   parseFloat(document.getElementById("p_leak").value),
+      };
+
+      try {
+        const res = await fetch("/simulate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+        const data = await res.json();
+
+        // LER 표시
+        document.getElementById("result-ler").innerHTML =
+          `<b>LER:</b> ${(data.ler * 100).toFixed(2)}%`;
+
+
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "시뮬레이션 실행";
+      }
+    }
+
+    let _layoutData = null;
+
+    function buildAncillaTrace(ancillas) {
+      const ancX = [], ancY = [], ancColor = [], ancText = [];
+      for (const a of ancillas) {
+        ancX.push(a.x);
+        ancY.push(a.y);
+        ancText.push(`Ancilla (${a.x}, ${a.y})<br>fired=${a.fired} erased=${a.erased} active=${a.active}`);
+        if (!a.active)     ancColor.push("rgba(0,0,0,0)");
+        else if (a.erased) ancColor.push("#ef4444");
+        else if (a.fired)  ancColor.push("#3b82f6");
+        else               ancColor.push("#d1d5db");
+      }
+      return {
+        x: ancX, y: ancY,
+        mode: "markers",
+        name: "Ancilla",
+        marker: { symbol: "square", size: 22, color: ancColor, line: { color: "#333", width: 1.5 } },
+        hovertemplate: "%{text}<extra></extra>",
+        text: ancText,
+      };
+    }
+
+    function drawLayout(divId, roundIdx) {
+      const data = _layoutData;
+
+      const correctedSet = new Set((data.corrected_qubits || []).map(q => `${q.x},${q.y}`));
+      const erroredSet   = new Set((data.data_qubits || []).filter(q => q.errored).map(q => `${q.x},${q.y}`));
+
+      const dqX = [], dqY = [], dqColor = [], dqText = [], dqLineColor = [], dqLineWidth = [];
+      for (const q of data.data_qubits) {
+        dqX.push(q.x);
+        dqY.push(q.y);
+        const key = `${q.x},${q.y}`;
+        const errored   = erroredSet.has(key);
+        const corrected = correctedSet.has(key);
+        dqColor.push(errored ? "#ef4444" : "white");
+        // 실제 에러: 빨간 채우기 / correction: 파란 테두리 굵게 / 정상: 회색 테두리
+        dqLineColor.push(corrected ? "#2563eb" : "#333");
+        dqLineWidth.push(corrected ? 4 : 2);
+        dqText.push(`Data qubit (${q.x}, ${q.y})${errored ? "<br>❌ errored" : ""}${corrected ? "<br>⚡ corrected" : ""}`);
+      }
+
+      const dataQubitTrace = {
+        x: dqX, y: dqY,
+        mode: "markers",
+        name: "Data Qubit",
+        marker: { symbol: "circle", size: 20, color: dqColor, line: { color: dqLineColor, width: dqLineWidth } },
+        hovertemplate: "%{text}<extra></extra>",
+        text: dqText,
+      };
+
+      Plotly.react(divId, [dataQubitTrace, buildAncillaTrace(data.ancillas_by_round[roundIdx])], {
+        title: { text: `Surface Code Layout (Round ${roundIdx + 1})`, font: { size: 14 } },
+        margin: { t: 40, b: 60, l: 40, r: 20 },
+        xaxis: { dtick: 1, zeroline: false, showgrid: true, gridcolor: "#eee" },
+        yaxis: { dtick: 1, zeroline: false, showgrid: true, gridcolor: "#eee", autorange: "reversed" },
+        legend: { x: 1, y: 1 },
+        plot_bgcolor: "#f9fafb",
+      });
+    }
+
+    // Surface code 격자: data qubit(원) + ancilla(사각형, fired/erased 색상)
+    function plotLayout(divId, data) {
+      _layoutData = data;
+      drawLayout(divId, 0);
+
+      // round 버튼 동적 생성
+      const btnContainer = document.getElementById("layout-round-btns");
+      btnContainer.innerHTML = "";
+      data.ancillas_by_round.forEach((_, i) => {
+        const btn = document.createElement("button");
+        btn.innerText = `R${i + 1}`;
+        btn.style.cssText = "margin:2px;padding:4px 10px;cursor:pointer;";
+        btn.onclick = () => drawLayout(divId, i);
+        btnContainer.appendChild(btn);
+      });
+    }
+
+    async function runVisualize() {
+      const btn = document.getElementById("viz-btn");
+      const errEl = document.getElementById("error-msg");
+      errEl.innerText = "";
+      btn.disabled = true;
+      btn.innerText = "실행 중...";
+
+      const payload = {
+        distance: parseInt(document.getElementById("distance").value),
+        rounds:   parseInt(document.getElementById("rounds").value),
+        p_gate:   parseFloat(document.getElementById("p_gate").value),
+        p_meas:   parseFloat(document.getElementById("p_meas").value),
+        p_leak:   parseFloat(document.getElementById("p_leak").value),
+      };
+
+      try {
+        const res = await fetch("/visualize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+        const data = await res.json();
+
+        const logicalError = data.logical_error ? "⚠️ 논리 에러 발생" : "✅ 논리 에러 없음";
+        document.getElementById("result-viz").innerHTML =
+          `단일 Shot: <b>${logicalError}</b> &nbsp;|&nbsp; 빨간=실제 에러 / 주황=correction 적용`;
+
+        // visualize 데이터로 layout 업데이트 (round 버튼 포함)
+        _layoutData = data;
+        drawLayout("plot-layout", 0);
+
+        const btnContainer = document.getElementById("layout-round-btns");
+        btnContainer.innerHTML = "";
+        (data.ancillas_by_round || [data.ancillas]).forEach((_, i) => {
+          const btn = document.createElement("button");
+          btn.innerText = `R${i + 1}`;
+          btn.style.cssText = "margin:2px;padding:4px 10px;cursor:pointer;";
+          btn.onclick = () => drawLayout("plot-layout", i);
+          btnContainer.appendChild(btn);
+        });
+
+
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "단일 Shot 시각화";
+      }
+    }
+
+    // syndrome grid 히트맵 (round 슬라이더)
+  </script>
+</body>
+</html>
