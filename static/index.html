@@ -105,25 +105,45 @@
 
     let _layoutData = null;
 
-    function buildAncillaTrace(ancillas) {
-      const ancX = [], ancY = [], ancColor = [], ancText = [];
+    function buildAncillaTraces(ancillas) {
+      // X, Z 별도 trace
+      const traces = { X: { x:[], y:[], color:[], text:[] }, Z: { x:[], y:[], color:[], text:[] } };
       for (const a of ancillas) {
-        ancX.push(a.x);
-        ancY.push(a.y);
-        ancText.push(`Ancilla (${a.x}, ${a.y})<br>fired=${a.fired} erased=${a.erased} active=${a.active}`);
-        if (!a.active)     ancColor.push("rgba(0,0,0,0)");
-        else if (a.erased) ancColor.push("#ef4444");
-        else if (a.fired)  ancColor.push("#3b82f6");
-        else               ancColor.push("#d1d5db");
+        const t = traces[a.stabilizer_type] || traces.Z;
+        t.x.push(a.x);
+        t.y.push(a.y);
+        t.text.push(`${a.stabilizer_type} Stabilizer (${a.x}, ${a.y})<br>fired=${a.fired} erased=${a.erased}`);
+        const baseColor = a.stabilizer_type === "X" ? "#10b981" : "#8b5cf6";
+        if (!a.active)     t.color.push("rgba(0,0,0,0)");
+        else if (a.erased) t.color.push("#ef4444");
+        else if (a.fired)  t.color.push("#f59e0b");
+        else               t.color.push(baseColor);
       }
-      return {
-        x: ancX, y: ancY,
+      return ["X", "Z"].map(type => ({
+        x: traces[type].x, y: traces[type].y,
         mode: "markers",
-        name: "Ancilla",
-        marker: { symbol: "square", size: 22, color: ancColor, line: { color: "#333", width: 1.5 } },
+        name: `${type} Stabilizer`,
+        marker: { symbol: "square", size: 22, color: traces[type].color, line: { color: "#333", width: 1.5 } },
         hovertemplate: "%{text}<extra></extra>",
-        text: ancText,
-      };
+        text: traces[type].text,
+      }));
+    }
+
+    function buildEdgeTraces(edges) {
+      // Plotly는 선분마다 null로 구분
+      const ex = [], ey = [];
+      for (const e of edges) {
+        ex.push(e.x0, e.x1, null);
+        ey.push(e.y0, e.y1, null);
+      }
+      return [{
+        x: ex, y: ey,
+        mode: "lines",
+        name: "Edge",
+        line: { color: "#9ca3af", width: 1.5 },
+        hoverinfo: "skip",
+        showlegend: false,
+      }];
     }
 
     function drawLayout(divId, roundIdx) {
@@ -155,7 +175,8 @@
         text: dqText,
       };
 
-      Plotly.react(divId, [dataQubitTrace, buildAncillaTrace(data.ancillas_by_round[roundIdx])], {
+      const edgeTraces = data.edges ? buildEdgeTraces(data.edges) : [];
+      Plotly.react(divId, [...edgeTraces, dataQubitTrace, ...buildAncillaTraces(data.ancillas_by_round[roundIdx])], {
         title: { text: `Surface Code Layout (Round ${roundIdx + 1})`, font: { size: 14 } },
         margin: { t: 40, b: 60, l: 40, r: 20 },
         xaxis: { dtick: 1, zeroline: false, showgrid: true, gridcolor: "#eee" },
@@ -208,7 +229,7 @@
 
         const logicalError = data.logical_error ? "⚠️ 논리 에러 발생" : "✅ 논리 에러 없음";
         document.getElementById("result-viz").innerHTML =
-          `단일 Shot: <b>${logicalError}</b> &nbsp;|&nbsp; 빨간=실제 에러 / 주황=correction 적용`;
+          `단일 Shot: <b>${logicalError}</b> &nbsp;|&nbsp; 빨간=실제 에러 / 주황=correction 적용 / fired = 이전 round 관측값과 XOR`;
 
         // visualize 데이터로 layout 업데이트 (round 버튼 포함)
         _layoutData = data;

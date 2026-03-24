@@ -43,17 +43,36 @@ def run_visualize(
     detector_coords = circuit.get_detector_coordinates()
     detector_xy = {(v[0], v[1]) for v in detector_coords.values()}
 
+    data_qubit_set = set()
     data_qubits = []
     for qubit_id, coord in qubit_coords.items():
         if (coord[0], coord[1]) not in detector_xy:
             errored = int(flipped[qubit_id]) != 0 if qubit_id < len(flipped) else 0
             data_qubits.append({"x": coord[0], "y": coord[1], "errored": int(errored)})
+            data_qubit_set.add((coord[0], coord[1]))
 
     # round별 ancilla 상태
+    # X/Z 구분: (x+y) % 4 == 2 → X stabilizer, == 0 → Z stabilizer
     unique_ancilla_xy = {}
     for coord in detector_coords.values():
         unique_ancilla_xy[(coord[0], coord[1])] = True
+
+    # X ancilla: qubit_coords에 있지만 detector_xy에 없는 (even, even) 위치
+    for qubit_id, coord in qubit_coords.items():
+        xy = (coord[0], coord[1])
+        if xy not in detector_xy and int(coord[0]) % 2 == 0 and int(coord[1]) % 2 == 0:
+            unique_ancilla_xy[xy] = True
+
     all_ancilla_positions = [{"x": k[0], "y": k[1]} for k in sorted(unique_ancilla_xy.keys())]
+
+    # stabilizer edges: 각 ancilla (ax, ay)의 대각선 4방향 data qubit 연결
+    edges = []
+    for pos in all_ancilla_positions:
+        ax, ay = pos["x"], pos["y"]
+        for dx, dy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            nb = (ax + dx, ay + dy)
+            if nb in data_qubit_set:
+                edges.append({"x0": ax, "y0": ay, "x1": nb[0], "y1": nb[1]})
 
     ancillas_by_round = []
     for t in range(rounds):
@@ -68,11 +87,13 @@ def run_visualize(
         for pos in all_ancilla_positions:
             key = (pos["x"], pos["y"])
             state = round_map.get(key, {"fired": 0, "erased": 0})
+            stabilizer_type = "X" if int(pos["x"] + pos["y"]) % 4 == 2 else "Z"
             round_ancillas.append({
                 "x": pos["x"], "y": pos["y"],
                 "fired": state["fired"],
                 "erased": state["erased"],
                 "active": 1 if key in round_map else 0,
+                "stabilizer_type": stabilizer_type,
             })
         ancillas_by_round.append(round_ancillas)
 
@@ -82,4 +103,5 @@ def run_visualize(
         "ancillas": ancillas_by_round[0],
         "ancillas_by_round": ancillas_by_round,
         "corrected_qubits": corrected_qubits,
+        "edges": edges,
     }
