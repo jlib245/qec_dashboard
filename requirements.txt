@@ -1,0 +1,12 @@
+# requirements.txt
+# 우리 import 체인에서 실제로 필요한 패키지만 큐레이션.
+# 버전은 uv.lock과 동기화.
+# qec-sim의 무거운 transitive deps (intel-extension, jupyter, numba 등)는 의도적으로 제외.
+# torch는 CPU 휠로 Dockerfile에서 별도 설치, qec-sim도 git URL로 별도 설치.
+
+fastapi==0.135.1
+uvicorn==0.42.0
+stim==1.15.0
+pymatching==2.3.1
+numpy==2.2.6
+pyyaml==6.0.3
