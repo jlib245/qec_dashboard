@@ -1,0 +1,32 @@
+# .dockerignore
+# Docker 빌드 컨텍스트에서 제외할 파일/디렉토리
+
+# git
+.git
+.gitignore
+
+# 로컬 venv (이미지 안에 들어가면 안 됨)
+.venv
+
+# 캐시
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.hypothesis
+.coverage
+
+# 테스트 (production 이미지 불필요)
+tests/
+
+# CI/CD 메타 (이미지에 불필요)
+.github/
+
+# 프로젝트 메모/문서
+.claude/
+*.md
+
+# OS / 에디터
+.DS_Store
+.idea/
+.vscode/
