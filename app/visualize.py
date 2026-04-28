@@ -38,32 +38,27 @@ def run_visualize(
 
     logical_error = bool(obs_flips[0] ^ correction_info["logical_error"][0])
 
-    # data qubit 좌표 + errored
+    # data qubit vs ancilla는 좌표 parity로 분리 (rotated surface code 컨벤션):
+    # - data qubit: (odd, odd)
+    # - ancilla:    (even, even)  — X/Z 구분은 아래 (x+y) % 4 로직에서
+    # detector 등록 여부에 의존하던 기존 방식은 rounds=1에서 X-ancilla가 detector_xy에
+    # 없어서 data qubit으로 오분류되는 버그가 있었음.
     qubit_coords = circuit.get_final_qubit_coordinates()
     detector_coords = circuit.get_detector_coordinates()
-    detector_xy = {(v[0], v[1]) for v in detector_coords.values()}
 
+    ancilla_xy_set = set()
     data_qubit_set = set()
     data_qubits = []
     for qubit_id, coord in qubit_coords.items():
-        if (coord[0], coord[1]) not in detector_xy:
+        x, y = int(coord[0]), int(coord[1])
+        if x % 2 == 0 and y % 2 == 0:
+            ancilla_xy_set.add((coord[0], coord[1]))
+        else:
             errored = int(flipped[qubit_id]) != 0 if qubit_id < len(flipped) else 0
             data_qubits.append({"x": coord[0], "y": coord[1], "errored": int(errored)})
             data_qubit_set.add((coord[0], coord[1]))
 
-    # round별 ancilla 상태
-    # X/Z 구분: (x+y) % 4 == 2 → X stabilizer, == 0 → Z stabilizer
-    unique_ancilla_xy = {}
-    for coord in detector_coords.values():
-        unique_ancilla_xy[(coord[0], coord[1])] = True
-
-    # X ancilla: qubit_coords에 있지만 detector_xy에 없는 (even, even) 위치
-    for qubit_id, coord in qubit_coords.items():
-        xy = (coord[0], coord[1])
-        if xy not in detector_xy and int(coord[0]) % 2 == 0 and int(coord[1]) % 2 == 0:
-            unique_ancilla_xy[xy] = True
-
-    all_ancilla_positions = [{"x": k[0], "y": k[1]} for k in sorted(unique_ancilla_xy.keys())]
+    all_ancilla_positions = [{"x": k[0], "y": k[1]} for k in sorted(ancilla_xy_set)]
 
     # stabilizer edges: 각 ancilla (ax, ay)의 대각선 4방향 data qubit 연결
     edges = []
