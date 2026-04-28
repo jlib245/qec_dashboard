@@ -1,0 +1,29 @@
+# .github/workflows/ci.yml
+name: Mock CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  mock-tests:
+    name: Mock tests (no qec-sim)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install minimal deps (qec-sim excluded)
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn numpy pytest hypothesis httpx
+
+      - name: Run mock tests
+        run: pytest tests/test_simulate_mock.py -v
