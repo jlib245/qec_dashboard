@@ -26,7 +26,7 @@
   <div class="controls">
     <div class="control-group">
       <label>Distance (d)</label>
-      <input type="number" id="distance" value="3" min="3" max="7" step="2">
+      <input type="number" id="distance" value="3" min="3" max="11" step="2">
     </div>
     <div class="control-group">
       <label>Rounds</label>
@@ -59,7 +59,7 @@
   <div id="result-viz" style="font-size:1.1rem;margin:8px 0;"></div>
   <div class="grids">
     <div>
-      <div id="plot-layout" style="width:480px;height:440px;"></div>
+      <div id="plot-layout"></div>
       <div id="layout-round-btns" style="text-align:center;margin-top:4px;"></div>
     </div>
   </div>
@@ -105,7 +105,7 @@
 
     let _layoutData = null;
 
-    function buildAncillaTraces(ancillas) {
+    function buildAncillaTraces(ancillas, markerSize) {
       // X, Z 별도 trace
       const traces = { X: { x:[], y:[], color:[], text:[] }, Z: { x:[], y:[], color:[], text:[] } };
       for (const a of ancillas) {
@@ -123,13 +123,13 @@
         x: traces[type].x, y: traces[type].y,
         mode: "markers",
         name: `${type} Stabilizer`,
-        marker: { symbol: "square", size: 22, color: traces[type].color, line: { color: "#333", width: 1.5 } },
+        marker: { symbol: "square", size: markerSize, color: traces[type].color, line: { color: "#333", width: 1.5 } },
         hovertemplate: "%{text}<extra></extra>",
         text: traces[type].text,
       }));
     }
 
-    function buildEdgeTraces(edges) {
+    function buildEdgeTraces(edges, lineWidth) {
       // Plotly는 선분마다 null로 구분
       const ex = [], ey = [];
       for (const e of edges) {
@@ -140,7 +140,7 @@
         x: ex, y: ey,
         mode: "lines",
         name: "Edge",
-        line: { color: "#9ca3af", width: 1.5 },
+        line: { color: "#9ca3af", width: lineWidth },
         hoverinfo: "skip",
         showlegend: false,
       }];
@@ -148,6 +148,21 @@
 
     function drawLayout(divId, roundIdx) {
       const data = _layoutData;
+
+      // distance 기반 canvas + marker 스케일 (하이브리드 D)
+      // - 작은 d: canvas를 키워 격자 간격 유지 (marker 크기 일정)
+      // - canvas가 cap(800px)에 도달하면 그 이상에선 marker 축소
+      const distance     = parseInt(document.getElementById("distance").value);
+      const wantedCanvas = 400 + (distance - 3) * 80;       // d=3→400, d=11→1040
+      const canvasSize   = Math.min(wantedCanvas, 800);
+      const scale        = canvasSize / wantedCanvas;       // cap 도달 시 < 1
+      const dataMarkerSize    = 20 * scale;
+      const ancillaMarkerSize = 22 * scale;
+      const edgeWidth         = Math.max(1.5 * scale, 1.0); // 너무 얇아지지 않게 하한
+
+      const plotDiv = document.getElementById(divId);
+      plotDiv.style.width  = canvasSize + "px";
+      plotDiv.style.height = (canvasSize - 40) + "px";
 
       const correctedSet = new Set((data.corrected_qubits || []).map(q => `${q.x},${q.y}`));
       const erroredSet   = new Set((data.data_qubits || []).filter(q => q.errored).map(q => `${q.x},${q.y}`));
@@ -170,13 +185,15 @@
         x: dqX, y: dqY,
         mode: "markers",
         name: "Data Qubit",
-        marker: { symbol: "circle", size: 20, color: dqColor, line: { color: dqLineColor, width: dqLineWidth } },
+        marker: { symbol: "circle", size: dataMarkerSize, color: dqColor, line: { color: dqLineColor, width: dqLineWidth } },
         hovertemplate: "%{text}<extra></extra>",
         text: dqText,
       };
 
-      const edgeTraces = data.edges ? buildEdgeTraces(data.edges) : [];
-      Plotly.react(divId, [...edgeTraces, dataQubitTrace, ...buildAncillaTraces(data.ancillas_by_round[roundIdx])], {
+      const edgeTraces = data.edges ? buildEdgeTraces(data.edges, edgeWidth) : [];
+      Plotly.react(divId, [...edgeTraces, dataQubitTrace, ...buildAncillaTraces(data.ancillas_by_round[roundIdx], ancillaMarkerSize)], {
+        width:  canvasSize,
+        height: canvasSize - 40,
         title: { text: `Surface Code Layout (Round ${roundIdx + 1})`, font: { size: 14 } },
         margin: { t: 40, b: 60, l: 40, r: 20 },
         xaxis: { dtick: 1, zeroline: false, showgrid: true, gridcolor: "#eee" },
