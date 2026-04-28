@@ -31,7 +31,7 @@ def run_simulation(
             "ler": float
         }
     """
-    code_params = CodeParams(name="surfacecode", distance=distance, rounds=rounds)
+    code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
     noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0, p_leak=p_leak)
 
     builder = build_circuit(code_params.name, code_params, noise_params)
