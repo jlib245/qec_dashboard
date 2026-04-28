@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.simulate import run_simulation
 from app.visualize import run_visualize
+from app.stats import run_stats
 
 app = FastAPI(title="QEC Dashboard")
 
@@ -70,4 +71,33 @@ async def visualize(
         p_gate=payload["p_gate"],
         p_meas=payload["p_meas"],
         p_leak=payload.get("p_leak", 0.0),
+    )
+
+
+@app.post("/stats")
+async def stats(
+    payload: dict = Body(
+        ...,
+        examples={
+            "default": {
+                "summary": "기본 예시",
+                "value": {
+                    "distance": 3,
+                    "rounds": 3,
+                    "p_gate": 0.01,
+                    "p_meas": 0.01,
+                    "p_leak": 0.0,
+                    "shots": 1000,
+                },
+            }
+        },
+    )
+):
+    return run_stats(
+        distance=payload["distance"],
+        rounds=payload["rounds"],
+        p_gate=payload["p_gate"],
+        p_meas=payload["p_meas"],
+        p_leak=payload.get("p_leak", 0.0),
+        shots=payload.get("shots", 1000),
     )

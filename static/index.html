@@ -52,10 +52,12 @@
 
   <div style="display:flex;gap:12px;align-items:center;">
     <button id="run-btn" onclick="runSimulation()">시뮬레이션 실행</button>
+    <button id="stats-btn" onclick="runStats()" style="background:#0891b2;">Physical Qubit 에러 통계</button>
     <button id="viz-btn" onclick="runVisualize()" style="background:#7c3aed;">단일 Shot 시각화</button>
   </div>
   <div id="error-msg"></div>
   <div id="result-ler"></div>
+  <div id="result-stats" style="font-size:1.1rem;margin:8px 0;"></div>
   <div id="result-viz" style="font-size:1.1rem;margin:8px 0;"></div>
   <div class="grids">
     <div>
@@ -100,6 +102,41 @@
       } finally {
         btn.disabled = false;
         btn.innerText = "시뮬레이션 실행";
+      }
+    }
+
+    async function runStats() {
+      const btn = document.getElementById("stats-btn");
+      const errEl = document.getElementById("error-msg");
+      errEl.innerText = "";
+      btn.disabled = true;
+      btn.innerText = "실행 중...";
+
+      const payload = {
+        distance: parseInt(document.getElementById("distance").value),
+        rounds:   parseInt(document.getElementById("rounds").value),
+        shots:    parseInt(document.getElementById("shots").value),
+        p_gate:   parseFloat(document.getElementById("p_gate").value),
+        p_meas:   parseFloat(document.getElementById("p_meas").value),
+        p_leak:   parseFloat(document.getElementById("p_leak").value),
+      };
+
+      try {
+        const res = await fetch("/stats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+        const data = await res.json();
+
+        document.getElementById("result-stats").innerHTML =
+          `<b>Physical Qubit Error</b> &nbsp;|&nbsp; 평균 에러 수: <b>${data.avg_errors.toFixed(2)} / ${data.n_data_qubits} qubits</b> &nbsp;|&nbsp; 평균 에러율: <b>${(data.avg_error_rate * 100).toFixed(2)}%</b>`;
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Physical Qubit 에러 통계";
       }
     }
 
