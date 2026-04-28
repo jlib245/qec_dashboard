@@ -1,9 +1,18 @@
 # app/simulate.py
+from types import SimpleNamespace
+
 import numpy as np
-from qec_sim.config.schema import CodeParams, NoiseParams
-from qec_sim.circuit.registry import build_circuit
-from qec_sim.circuit.simulator import CircuitNoiseSimulator
-from qec_sim.decoders.mwpm import ErasureMWPM
+
+try:
+    from qec_sim.config.schema import CodeParams, NoiseParams
+    from qec_sim.circuit.registry import build_circuit
+    from qec_sim.circuit.simulator import CircuitNoiseSimulator
+    from qec_sim.decoders.mwpm import ErasureMWPM
+except ImportError:
+    # qec-sim 미설치 환경(mock CI 등): kwargs를 attr로 저장하는 stub만 두고,
+    # 실제 호출되는 함수/클래스는 None — 테스트에서 patch되거나, 호출 시 에러로 드러나야 함
+    CodeParams = NoiseParams = SimpleNamespace
+    build_circuit = CircuitNoiseSimulator = ErasureMWPM = None
 
 
 def run_simulation(
