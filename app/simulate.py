@@ -1,7 +1,15 @@
 # app/simulate.py
+import sys
 from types import SimpleNamespace
 
 import numpy as np
+
+
+def _sanitize_prob(p: float) -> float:
+    """Subnormal float은 detector error model의 edge weight overflow를 유발하므로 0.0으로 clamp."""
+    if p < sys.float_info.min:
+        return 0.0
+    return p
 
 try:
     from qec_sim.config.schema import CodeParams, NoiseParams
@@ -31,6 +39,10 @@ def run_simulation(
             "ler": float
         }
     """
+    p_gate = _sanitize_prob(p_gate)
+    p_meas = _sanitize_prob(p_meas)
+    p_leak = _sanitize_prob(p_leak)
+
     code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
     noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0, p_leak=p_leak)
 
