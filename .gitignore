@@ -9,3 +9,5 @@ venv/
 mlruns/
 *.log
 .DS_Store
+.coverage
+.hypothesis
