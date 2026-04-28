@@ -1,0 +1,49 @@
+# .github/workflows/docker_verify.yml
+name: Docker Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  docker-verify:
+    name: Build and run container
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t qec-dashboard:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name qec_dashboard_ci \
+            -e PORT=10000 \
+            -p 10000:10000 \
+            qec-dashboard:ci
+
+      - name: Wait for app to be ready (up to 60s)
+        # qec-sim + torch 로딩에 시간 걸려서 단순 sleep 대신 polling
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:10000/ > /dev/null 2>&1; then
+              echo "App is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not become ready in 60s"
+          docker logs qec_dashboard_ci
+          exit 1
+
+      - name: Verify container running
+        run: docker ps | grep qec_dashboard_ci
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f qec_dashboard_ci || true
