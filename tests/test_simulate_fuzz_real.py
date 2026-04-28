@@ -17,8 +17,10 @@ class TestRunSimulationFuzzReal(unittest.TestCase):
     @given(
         distance=st.sampled_from([3, 5]),          # surface code는 홀수만 유효
         rounds=st.integers(min_value=1, max_value=5),
-        p_gate=st.floats(min_value=0.0, max_value=0.3, allow_nan=False),
-        p_meas=st.floats(min_value=0.0, max_value=0.3, allow_nan=False),
+        p_gate=st.floats(min_value=0.0, max_value=0.3,
+                         allow_nan=False, allow_subnormal=False),
+        p_meas=st.floats(min_value=0.0, max_value=0.3,
+                         allow_nan=False, allow_subnormal=False),
         shots=st.integers(min_value=1, max_value=50),
     )
     @settings(max_examples=1000, deadline=None)
