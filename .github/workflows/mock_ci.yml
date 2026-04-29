@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi uvicorn numpy pytest pytest-cov hypothesis httpx
 
-      - name: Run mock tests with coverage (gate: 80%)
+      - name: Run mock tests with coverage (80% gate)
         run: |
           pytest \
             tests/test_simulate_mock.py \
