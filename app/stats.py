@@ -1,8 +1,17 @@
 # app/stats.py
-import stim
+from types import SimpleNamespace
+
 import numpy as np
-from qec_sim.config.schema import CodeParams, NoiseParams
-from qec_sim.circuit.registry import build_circuit
+
+try:
+    import stim
+    from qec_sim.config.schema import CodeParams, NoiseParams
+    from qec_sim.circuit.registry import build_circuit
+except ImportError:
+    # qec-sim/stim 미설치 환경(mock CI 등): 테스트에서 patch되거나, 호출 시 에러로 드러나야 함
+    stim = None
+    CodeParams = NoiseParams = SimpleNamespace
+    build_circuit = None
 
 
 def run_stats(
