@@ -44,10 +44,6 @@
       <label>p_meas</label>
       <input type="number" id="p_meas" value="0.01" min="0" max="0.1" step="0.001">
     </div>
-    <div class="control-group">
-      <label>p_leak</label>
-      <input type="number" id="p_leak" value="0.0" min="0" max="0.2" step="0.01">
-    </div>
   </div>
 
   <div style="display:flex;gap:12px;align-items:center;">
@@ -80,7 +76,6 @@
         shots:    parseInt(document.getElementById("shots").value),
         p_gate:   parseFloat(document.getElementById("p_gate").value),
         p_meas:   parseFloat(document.getElementById("p_meas").value),
-        p_leak:   parseFloat(document.getElementById("p_leak").value),
       };
 
       try {
@@ -118,7 +113,6 @@
         shots:    parseInt(document.getElementById("shots").value),
         p_gate:   parseFloat(document.getElementById("p_gate").value),
         p_meas:   parseFloat(document.getElementById("p_meas").value),
-        p_leak:   parseFloat(document.getElementById("p_leak").value),
       };
 
       try {
@@ -269,7 +263,6 @@
         rounds:   parseInt(document.getElementById("rounds").value),
         p_gate:   parseFloat(document.getElementById("p_gate").value),
         p_meas:   parseFloat(document.getElementById("p_meas").value),
-        p_leak:   parseFloat(document.getElementById("p_leak").value),
       };
 
       try {

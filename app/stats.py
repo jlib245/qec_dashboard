@@ -19,7 +19,6 @@ def run_stats(
     rounds: int,
     p_gate: float,
     p_meas: float,
-    p_leak: float = 0.0,
     shots: int = 1000,
 ) -> dict:
     """
@@ -33,7 +32,7 @@ def run_stats(
         }
     """
     code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
-    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0, p_leak=p_leak)
+    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0)
 
     circuit = build_circuit(code_params.name, code_params, noise_params).build()
 

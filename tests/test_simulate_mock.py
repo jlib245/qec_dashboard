@@ -19,7 +19,6 @@ class TestRunSimulationMock(unittest.TestCase):
             rounds=3,
             p_gate=0.01,
             p_meas=0.01,
-            p_leak=0.0,
             shots=10,
         )
 
@@ -27,7 +26,6 @@ class TestRunSimulationMock(unittest.TestCase):
         shots = 10
         syndromes   = np.zeros((shots, 10), dtype=np.uint8)
         observables = np.zeros((shots, 1),  dtype=np.uint8)
-        erasures    = np.zeros((shots, 10), dtype=np.uint8)
         predictions = np.zeros((shots, 1),  dtype=np.uint8)
         predictions[:2, 0] = 1  # 10 shots 중 2개 오류 → LER = 0.2
 
@@ -41,7 +39,6 @@ class TestRunSimulationMock(unittest.TestCase):
         self.mock_simulator.generate_data.return_value = {
             "syndromes":   syndromes,
             "observables": observables,
-            "erasures":    erasures,
         }
 
         self.mock_decoder = Mock()
@@ -49,7 +46,7 @@ class TestRunSimulationMock(unittest.TestCase):
 
     # ── 호출 여부 검증 ───────────────────────────
 
-    @patch("app.simulate.ErasureMWPM")
+    @patch("app.simulate.MWPMDecoder")
     @patch("app.simulate.CircuitNoiseSimulator")
     @patch("app.simulate.build_circuit")
     def test_build_circuit_called_with_surface_code(self, mock_build, mock_sim_cls, mock_decoder_cls):
@@ -62,7 +59,7 @@ class TestRunSimulationMock(unittest.TestCase):
 
         self.assertEqual(mock_build.call_args[0][0], "surface_code")
 
-    @patch("app.simulate.ErasureMWPM")
+    @patch("app.simulate.MWPMDecoder")
     @patch("app.simulate.CircuitNoiseSimulator")
     @patch("app.simulate.build_circuit")
     def test_generate_data_called_with_shots(self, mock_build, mock_sim_cls, mock_decoder_cls):
@@ -75,7 +72,7 @@ class TestRunSimulationMock(unittest.TestCase):
 
         self.mock_simulator.generate_data.assert_called_with(shots=10)
 
-    @patch("app.simulate.ErasureMWPM")
+    @patch("app.simulate.MWPMDecoder")
     @patch("app.simulate.CircuitNoiseSimulator")
     @patch("app.simulate.build_circuit")
     def test_decode_batch_called(self, mock_build, mock_sim_cls, mock_decoder_cls):
@@ -90,7 +87,7 @@ class TestRunSimulationMock(unittest.TestCase):
 
     # ── 반환값 검증 ────────────────────────────────────────────
 
-    @patch("app.simulate.ErasureMWPM")
+    @patch("app.simulate.MWPMDecoder")
     @patch("app.simulate.CircuitNoiseSimulator")
     @patch("app.simulate.build_circuit")
     def test_ler_calculated_correctly(self, mock_build, mock_sim_cls, mock_decoder_cls):

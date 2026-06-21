@@ -31,7 +31,6 @@ class TestRunSimulationFuzzReal(unittest.TestCase):
             rounds=rounds,
             p_gate=p_gate,
             p_meas=p_meas,
-            p_leak=0.0,
             shots=shots,
         )
         self.assertEqual(0.0 <= result["ler"] <= 1.0, True)
@@ -51,7 +50,6 @@ class TestRunSimulationFuzzReal(unittest.TestCase):
             rounds=rounds,
             p_gate=0.0,
             p_meas=0.0,
-            p_leak=0.0,
             shots=shots,
         )
         self.assertEqual(result["ler"], 0.0)

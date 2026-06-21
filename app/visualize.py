@@ -7,12 +7,12 @@ try:
     import stim
     from qec_sim.config.schema import CodeParams, NoiseParams
     from qec_sim.circuit.registry import build_circuit
-    from qec_sim.decoders.mwpm import ErasureMWPM
+    from qec_sim.decoders.mwpm import MWPMDecoder
 except ImportError:
     # qec-sim/stim 미설치 환경(mock CI 등): 테스트에서 patch되거나, 호출 시 에러로 드러나야 함
     stim = None
     CodeParams = NoiseParams = SimpleNamespace
-    build_circuit = ErasureMWPM = None
+    build_circuit = MWPMDecoder = None
 
 
 def run_visualize(
@@ -20,7 +20,6 @@ def run_visualize(
     rounds: int,
     p_gate: float,
     p_meas: float,
-    p_leak: float = 0.0,
 ) -> dict:
     """
     단일 shot 시뮬레이션 + MWPM correction 시각화 정보 반환.
@@ -28,7 +27,7 @@ def run_visualize(
     (p_meas가 최종 data qubit 측정에도 X_ERROR를 넣는 점은 감안)
     """
     code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
-    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0, p_leak=p_leak)
+    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0)
 
     circuit = build_circuit(code_params.name, code_params, noise_params).build()
 
@@ -41,7 +40,7 @@ def run_visualize(
 
     # MWPM decoder
     error_model = circuit.detector_error_model(decompose_errors=True)
-    decoder = ErasureMWPM(error_model, circuit=circuit)
+    decoder = MWPMDecoder(error_model, circuit=circuit)
     correction_info = decoder.decode_single_with_correction(det_flips)
     corrected_qubits = decoder.get_corrected_qubits(correction_info["corrected_fault_ids"])
 

@@ -14,7 +14,7 @@ class TestRunStatsMock(unittest.TestCase):
     def setUp(self):
         self.params = dict(
             distance=3, rounds=3,
-            p_gate=0.01, p_meas=0.01, p_leak=0.0, shots=10,
+            p_gate=0.01, p_meas=0.01, shots=10,
         )
 
         # Mock 회로: 4 data qubit + 1 ancilla

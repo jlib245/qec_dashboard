@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 # 2) qec-sim (--no-deps: intel-extension/jupyter/pandas 등 import 체인에 없는 무거운 deps 회피)
-RUN pip install --no-cache-dir --no-deps git+https://github.com/jlib245/qec.git
+RUN pip install --no-cache-dir --no-deps git+https://github.com/jlib245/qec.git@v0.1.0
 
 # 3) qec-sim 런타임 + 대시보드 deps
 COPY requirements.txt .

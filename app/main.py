@@ -30,7 +30,6 @@ async def simulate(
                     "rounds": 3,
                     "p_gate": 0.01,
                     "p_meas": 0.01,
-                    "p_leak": 0.0,
                     "shots": 1000,
                 },
             }
@@ -42,7 +41,6 @@ async def simulate(
         rounds=payload["rounds"],
         p_gate=payload["p_gate"],
         p_meas=payload["p_meas"],
-        p_leak=payload.get("p_leak", 0.0),
         shots=payload.get("shots", 1000),
     )
 
@@ -59,7 +57,6 @@ async def visualize(
                     "rounds": 3,
                     "p_gate": 0.01,
                     "p_meas": 0.01,
-                    "p_leak": 0.0,
                 },
             }
         },
@@ -70,7 +67,6 @@ async def visualize(
         rounds=payload["rounds"],
         p_gate=payload["p_gate"],
         p_meas=payload["p_meas"],
-        p_leak=payload.get("p_leak", 0.0),
     )
 
 
@@ -86,7 +82,6 @@ async def stats(
                     "rounds": 3,
                     "p_gate": 0.01,
                     "p_meas": 0.01,
-                    "p_leak": 0.0,
                     "shots": 1000,
                 },
             }
@@ -98,6 +93,5 @@ async def stats(
         rounds=payload["rounds"],
         p_gate=payload["p_gate"],
         p_meas=payload["p_meas"],
-        p_leak=payload.get("p_leak", 0.0),
         shots=payload.get("shots", 1000),
     )

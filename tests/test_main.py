@@ -15,12 +15,12 @@ class TestMainRoutes(unittest.TestCase):
         self.client = TestClient(app)
         self.simulate_payload = {
             "distance": 3, "rounds": 3,
-            "p_gate": 0.01, "p_meas": 0.01, "p_leak": 0.0,
+            "p_gate": 0.01, "p_meas": 0.01,
             "shots": 100,
         }
         self.visualize_payload = {
             "distance": 3, "rounds": 3,
-            "p_gate": 0.01, "p_meas": 0.01, "p_leak": 0.0,
+            "p_gate": 0.01, "p_meas": 0.01,
         }
 
     def test_home_serves_html(self):
@@ -48,12 +48,11 @@ class TestMainRoutes(unittest.TestCase):
 
     @patch("app.main.run_simulation")
     def test_simulate_default_values(self, mock_run):
-        """payload에 p_leak, shots 없으면 기본값으로 호출되어야 한다"""
+        """payload에 shots 없으면 기본값으로 호출되어야 한다"""
         mock_run.return_value = {"ler": 0.0}
         minimal = {"distance": 3, "rounds": 3, "p_gate": 0.01, "p_meas": 0.01}
         self.client.post("/simulate", json=minimal)
         kwargs = mock_run.call_args.kwargs
-        self.assertEqual(kwargs["p_leak"], 0.0)
         self.assertEqual(kwargs["shots"], 1000)
 
     @patch("app.main.run_visualize")
