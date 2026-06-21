@@ -33,4 +33,5 @@ jobs:
             tests/test_stats_mock.py \
             tests/test_visualize_mock.py \
             tests/test_issue.py \
+            tests/test_decode_mock.py \
             -v --cov=app --cov-report=term-missing --cov-fail-under=80

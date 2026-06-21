@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.simulate import run_simulation
 from app.visualize import run_visualize
 from app.stats import run_stats
+from app.decode import run_decode
 from app.logging_config import setup_logging, get_logger
 from app.issue import create_github_issue
 
@@ -146,6 +147,33 @@ async def stats(
         lambda: run_stats(
             distance=payload["distance"],
             rounds=payload["rounds"],
+            p_gate=payload["p_gate"],
+            p_meas=payload["p_meas"],
+            shots=payload.get("shots", 1000),
+        ),
+    )
+
+
+@app.post("/decode")
+async def decode(
+    payload: dict = Body(
+        ...,
+        examples={
+            "default": {
+                "summary": "기본 예시 (geometry는 서버 고정 d=3/r=3)",
+                "value": {
+                    "p_gate": 0.01,
+                    "p_meas": 0.01,
+                    "shots": 1000,
+                },
+            }
+        },
+    )
+):
+    return _handle(
+        "/decode",
+        payload,
+        lambda: run_decode(
             p_gate=payload["p_gate"],
             p_meas=payload["p_meas"],
             shots=payload.get("shots", 1000),

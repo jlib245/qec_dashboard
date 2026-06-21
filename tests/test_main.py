@@ -93,6 +93,16 @@ class TestMainRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["n_data_qubits"], 9)
 
+    @patch("app.main.run_decode")
+    def test_decode_returns_200(self, mock_run):
+        """POST /decode 200 응답 + mode 통과"""
+        mock_run.return_value = {"mode": "mwpm", "distance": 3, "rounds": 3, "ler": 0.1}
+        response = self.client.post(
+            "/decode", json={"p_gate": 0.01, "p_meas": 0.01, "shots": 100}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "mwpm")
+
 
 if __name__ == "__main__":
     unittest.main()
