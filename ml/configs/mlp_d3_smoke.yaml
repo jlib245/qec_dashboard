@@ -44,7 +44,7 @@ simulation:
 
 mlflow:
   enable: true
-  experiment_name: "surface_code_d3_smoke"
+  experiment_name: "surface_code_d3"   # 실제와 동일 experiment, kind:smoke 태그로 구분
   tracking_uri: "sqlite:///mlruns.db"
   register_model: true
   registered_model_name: "mlp_d3_smoke"
