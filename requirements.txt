@@ -10,3 +10,4 @@ stim==1.15.0
 pymatching==2.3.1
 numpy==2.2.6
 pyyaml==6.0.3
+requests==2.32.3

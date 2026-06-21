@@ -1,4 +1,5 @@
 # app/main.py
+import traceback
 from typing import Callable
 
 from fastapi import FastAPI, Body
@@ -9,6 +10,7 @@ from app.simulate import run_simulation
 from app.visualize import run_visualize
 from app.stats import run_stats
 from app.logging_config import setup_logging, get_logger
+from app.issue import create_github_issue
 
 setup_logging()
 logger = get_logger("qec_dashboard")
@@ -35,6 +37,19 @@ def _handle(endpoint: str, payload: dict, run: Callable):
         logger.exception(
             f"FAIL {endpoint} | params={payload} | error={type(e).__name__}: {e}"
         )
+        tb = traceback.format_exc()
+        title = f"[Prod Error] {endpoint} failed: {type(e).__name__}"
+        body = (
+            f"## Summary\n"
+            f"- endpoint: {endpoint}\n"
+            f"- params: `{payload}`\n\n"
+            f"## Exception\n"
+            f"- type: {type(e).__name__}\n"
+            f"- message: {str(e)}\n\n"
+            f"## Traceback (line info)\n"
+            f"```text\n{tb}\n```"
+        )
+        create_github_issue(title, body, logger)
         return JSONResponse(
             status_code=500,
             content={"error": "Internal Server Error", "endpoint": endpoint},

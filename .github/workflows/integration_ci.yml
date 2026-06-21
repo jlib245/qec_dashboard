@@ -38,7 +38,7 @@ jobs:
         run: pip install stim pymatching numpy pyyaml
 
       - name: Install dashboard deps
-        run: pip install fastapi uvicorn pytest hypothesis httpx
+        run: pip install fastapi uvicorn pytest hypothesis httpx requests
 
       - name: Verify qec-sim importable
         run: python -c "from qec_sim.decoders.mwpm import MWPMDecoder; print('qec-sim OK')"

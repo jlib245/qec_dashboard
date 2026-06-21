@@ -63,6 +63,14 @@ class TestMainRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["error"], "Internal Server Error")
 
+    @patch("app.main.create_github_issue")
+    @patch("app.main.run_simulation")
+    def test_simulate_failure_creates_issue(self, mock_run, mock_issue):
+        """run_*가 예외를 던지면 GitHub Issue 생성이 호출되어야 한다"""
+        mock_run.side_effect = RuntimeError("boom")
+        self.client.post("/simulate", json=self.simulate_payload)
+        mock_issue.assert_called_once()
+
     @patch("app.main.run_visualize")
     def test_visualize_returns_200(self, mock_run):
         """POST /visualize 200 응답"""
