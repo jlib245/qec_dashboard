@@ -12,12 +12,14 @@ noise:
 
 training:
   data_mode: "online"
-  train_steps: 50000
-  val_steps: 5000
+  train_steps: 20000
+  val_steps: 2000
   chunk_size: 10000
-  epochs: 30
+  epochs: 15
   batch_size: 1024
   seed: 42
+  num_workers: 0      # WSL2에서 online 시뮬레이터 + 멀티프로세싱 DataLoader가 stall → 메인 프로세스 생성
+  pin_memory: false   # CPU 전용 (accelerator 없음)
   optimizer:
     name: "Adam"
     kwargs:
