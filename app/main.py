@@ -1,15 +1,44 @@
 # app/main.py
+from typing import Callable
+
 from fastapi import FastAPI, Body
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.simulate import run_simulation
 from app.visualize import run_visualize
 from app.stats import run_stats
+from app.logging_config import setup_logging, get_logger
+
+setup_logging()
+logger = get_logger("qec_dashboard")
 
 app = FastAPI(title="QEC Dashboard")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+def _handle(endpoint: str, payload: dict, run: Callable):
+    """모든 엔드포인트 공통 처리: CALL/OK/FAIL 로깅 + 실패 시 GitHub Issue 자동 생성.
+
+    - 진입: CALL 로그 (endpoint + params)
+    - 성공: OK 로그 후 결과 그대로 반환
+    - 실패: FAIL 로그(스택트레이스) + create_github_issue + 500 응답
+    """
+    logger.info(f"CALL {endpoint} | params={payload}")
+    try:
+        result = run()
+        logger.info(f"OK {endpoint}")
+        return result
+    except Exception as e:
+        # 현재 예외의 traceback을 자동으로 찍는다 (파일/라인 포함)
+        logger.exception(
+            f"FAIL {endpoint} | params={payload} | error={type(e).__name__}: {e}"
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal Server Error", "endpoint": endpoint},
+        )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -36,12 +65,16 @@ async def simulate(
         },
     )
 ):
-    return run_simulation(
-        distance=payload["distance"],
-        rounds=payload["rounds"],
-        p_gate=payload["p_gate"],
-        p_meas=payload["p_meas"],
-        shots=payload.get("shots", 1000),
+    return _handle(
+        "/simulate",
+        payload,
+        lambda: run_simulation(
+            distance=payload["distance"],
+            rounds=payload["rounds"],
+            p_gate=payload["p_gate"],
+            p_meas=payload["p_meas"],
+            shots=payload.get("shots", 1000),
+        ),
     )
 
 
@@ -62,11 +95,15 @@ async def visualize(
         },
     )
 ):
-    return run_visualize(
-        distance=payload["distance"],
-        rounds=payload["rounds"],
-        p_gate=payload["p_gate"],
-        p_meas=payload["p_meas"],
+    return _handle(
+        "/visualize",
+        payload,
+        lambda: run_visualize(
+            distance=payload["distance"],
+            rounds=payload["rounds"],
+            p_gate=payload["p_gate"],
+            p_meas=payload["p_meas"],
+        ),
     )
 
 
@@ -88,10 +125,14 @@ async def stats(
         },
     )
 ):
-    return run_stats(
-        distance=payload["distance"],
-        rounds=payload["rounds"],
-        p_gate=payload["p_gate"],
-        p_meas=payload["p_meas"],
-        shots=payload.get("shots", 1000),
+    return _handle(
+        "/stats",
+        payload,
+        lambda: run_stats(
+            distance=payload["distance"],
+            rounds=payload["rounds"],
+            p_gate=payload["p_gate"],
+            p_meas=payload["p_meas"],
+            shots=payload.get("shots", 1000),
+        ),
     )
