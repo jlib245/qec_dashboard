@@ -45,10 +45,9 @@ def run_decode(p_gate: float, p_meas: float, shots: int = 1000) -> dict:
         error_model = circuit.detector_error_model(decompose_errors=True)
         predictions = MWPMDecoder(error_model).decode_batch(syndromes)
     elif mode == "neural":
-        # 학습된 NN 디코더 연결은 feature/mlflow-decoder에서 추가.
-        raise NotImplementedError(
-            "neural 디코더는 feature/mlflow-decoder에서 연결됩니다."
-        )
+        # mlflow는 neural 경로에서만 필요 → lazy import (mwpm-only 환경은 영향 없음).
+        from app import model_loader
+        predictions = model_loader.get_decoder().decode_batch(syndromes, batch_size=4096)
     else:
         raise ValueError(f"알 수 없는 MODEL_MODE: '{mode}' (mwpm | neural)")
 

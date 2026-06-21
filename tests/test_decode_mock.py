@@ -56,12 +56,16 @@ class TestRunDecodeMock(unittest.TestCase):
         args, _ = self.mock_decoder.decode_batch.call_args
         self.assertEqual(len(args), 1)
 
+    @patch("app.model_loader.get_decoder")
     @patch("app.decode.config.MODEL_MODE", "neural")
-    def test_neural_raises_not_implemented(self):
-        """neural 모드는 아직 미구현 → NotImplementedError"""
+    def test_neural_uses_model_loader(self, mock_get_decoder):
+        """neural 모드는 model_loader.get_decoder()의 디코더로 LER을 계산한다"""
+        mock_get_decoder.return_value = self.mock_decoder
         with self._patch():
-            with self.assertRaises(NotImplementedError):
-                run_decode(p_gate=0.01, p_meas=0.01, shots=10)
+            result = run_decode(p_gate=0.01, p_meas=0.01, shots=10)
+        self.assertEqual(result["mode"], "neural")
+        self.assertAlmostEqual(result["ler"], 0.3)
+        mock_get_decoder.assert_called_once()
 
     @patch("app.decode.config.MODEL_MODE", "bogus")
     def test_unknown_mode_raises_value_error(self):
