@@ -1,0 +1,53 @@
+# .github/workflows/train.yml
+name: Train QEC Decoder
+
+on:
+  push:
+    branches: [ main ]
+    # ML 관련 파일이 바뀌었을 때만 학습 트리거
+    paths:
+      - 'ml/**'
+      - 'app/**'
+      - 'requirements.txt'
+      - '.github/workflows/train.yml'
+  # GitHub 화면에서 수동 실행도 가능하게
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Secret이 있으면 ngrok MLflow 서버로, 없으면 빈값 → config의 sqlite 로컬 사용
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: CPU-only torch 설치
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: qec-sim 설치 (transitive deps 제외, v0.1.0 핀)
+        run: pip install --no-deps git+https://github.com/jlib245/qec.git@v0.1.0
+
+      - name: 대시보드 + 학습 deps 설치
+        run: pip install -r requirements.txt
+
+      # smoke config로 학습→로깅→registry 등록 파이프라인이 도는지 검증 (CI는 품질 X)
+      - name: 모델 학습 실행 (smoke)
+        run: python -m ml.train --config ml/configs/mlp_d3_smoke.yaml
+
+      # 학습 결과(best_model.pth, config.yaml, training_log.csv)를 실행 결과에 첨부
+      - name: 학습 결과 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model-files
+          path: results/

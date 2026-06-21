@@ -18,6 +18,8 @@ training:
   epochs: 1
   batch_size: 256
   seed: 42
+  num_workers: 0      # CI/WSL2에서 멀티프로세싱 DataLoader stall 예방
+  pin_memory: false
   optimizer:
     name: "Adam"
     kwargs:
