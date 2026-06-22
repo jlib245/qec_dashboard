@@ -43,3 +43,10 @@ jobs:
       # 학습 → test_ler 로깅 → registry 등록 → 더 좋으면 champion 자동 교체 (ml.train 내부)
       - name: Train, register & auto-promote
         run: python -m ml.train --config "${{ github.event.inputs.config || 'ml/configs/mlp_d3.yaml' }}"
+
+      # 학습 산출물(best_model.pth, config.yaml, training_log.csv)을 실행 결과에 첨부
+      - name: Upload training artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model-files
+          path: results/

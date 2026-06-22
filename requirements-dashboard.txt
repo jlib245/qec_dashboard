@@ -1,0 +1,3 @@
+# 모니터링 대시보드 전용 (앱/Docker 이미지엔 불필요). 별도 설치: pip install -r requirements-dashboard.txt
+streamlit==1.52.1
+pandas==2.3.3

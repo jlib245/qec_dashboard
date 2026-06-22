@@ -11,3 +11,7 @@ BUNDLED_CONFIG = os.getenv("BUNDLED_CONFIG", "ml/configs/mlp_d3.yaml")
 # /decode·/visualize에서 decoder를 mwpm으로 쓸 때의 기본 geometry.
 FIXED_DISTANCE = int(os.getenv("FIXED_DISTANCE", "3"))
 FIXED_ROUNDS = int(os.getenv("FIXED_ROUNDS", "3"))
+
+# Drift(열화) 감지: 서빙 LER이 임계를 초과한 요청이 LIMIT회 누적되면 재학습 검토 Issue 생성.
+LER_DRIFT_THRESHOLD = float(os.getenv("LER_DRIFT_THRESHOLD", "0.1"))
+DRIFT_LIMIT = int(os.getenv("DRIFT_LIMIT", "5"))
