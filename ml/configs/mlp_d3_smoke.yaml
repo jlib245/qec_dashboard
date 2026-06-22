@@ -46,10 +46,10 @@ simulation:
 
 mlflow:
   enable: true
-  experiment_name: "surface_code_d3"   # 실제와 동일 experiment, kind:smoke 태그로 구분
+  experiment_name: "surface_code_d3_r3"   # 실제와 동일 experiment, kind:smoke 태그로 구분
   tracking_uri: "sqlite:///mlruns.db"
   register_model: true
-  registered_model_name: "mlp_d3_smoke"
+  registered_model_name: "mlp_d3_r3_smoke"
   register_alias: "challenger"
   tags:
     project: "qec_dashboard"

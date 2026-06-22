@@ -9,7 +9,7 @@ MODEL_MODE = os.getenv("MODEL_MODE", "mwpm")
 # MLflow (feature/mlflow-decoder에서 사용).
 # ngrok 무료 도메인은 매번 바뀌므로 하드코딩 금지 — 항상 env로 주입.
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
-MODEL_URI = os.getenv("MODEL_URI", "models:/mlp_d3@champion")
+MODEL_URI = os.getenv("MODEL_URI", "models:/mlp_d3_r3@champion")
 # registry에는 core_model만 등록되므로, 서빙 시 wrapper 재조립용 config가 필요.
 BUNDLED_CONFIG = os.getenv("BUNDLED_CONFIG", "ml/configs/mlp_d3.yaml")
 
