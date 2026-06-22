@@ -1,0 +1,55 @@
+# ml/configs/mlp_d5.yaml
+# d=5 모델 — geometry=(5,5)는 d=3과 별개 experiment/model (num_detectors가 달라 호환 안 됨).
+code:
+  name: "surface_code"
+  distance: 5
+  rounds: 5
+
+noise:
+  p_gate: [0.003, 0.005, 0.007, 0.009, 0.011]
+  p_meas: 0.005
+  p_corr: 0.0
+
+training:
+  data_mode: "online"
+  train_steps: 30000
+  val_steps: 3000
+  chunk_size: 10000
+  epochs: 25
+  batch_size: 1024
+  seed: 42
+  num_workers: 0
+  pin_memory: false
+  optimizer:
+    name: "Adam"
+    kwargs:
+      lr: 0.001
+  criterion:
+    name: "bce_with_logits"
+    kwargs: {}
+  early_stopping:
+    patience: 8
+  output_dir: "./results/mlp_d5"
+
+model:
+  name: "mlp"
+  kwargs:
+    hidden_dim: 512
+
+decoder:
+  name: "neural_decoder"
+  weight_path: ""
+  model_kwargs: {}
+
+simulation:
+  backend: "stim"
+
+mlflow:
+  enable: true
+  experiment_name: "surface_code_d5_r5"
+  tracking_uri: "sqlite:///mlruns.db"
+  register_model: true
+  registered_model_name: "mlp_d5_r5"
+  register_alias: "challenger"
+  tags:
+    project: "qec_dashboard"
