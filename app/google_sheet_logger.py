@@ -11,6 +11,8 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive",
 ]
 
+HEADER = ["time", "decoder", "distance", "rounds", "p_gate", "p_meas", "shots", "ler"]
+
 _spreadsheet = None
 
 
@@ -33,9 +35,19 @@ def get_spreadsheet():
     return _spreadsheet
 
 
+def _get_or_create_worksheet(spreadsheet, name):
+    """워크시트가 없으면 헤더와 함께 생성 (수동 탭/헤더 작성 불필요)."""
+    try:
+        return spreadsheet.worksheet(name)
+    except gspread.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(title=name, rows=1000, cols=len(HEADER))
+        ws.append_row(HEADER)
+        return ws
+
+
 def append_prediction_log(decoder, distance, rounds, p_gate, p_meas, shots, ler):
-    """예측 로그 1줄을 'prediction_logs' 워크시트에 append (운영 모니터링 영속화)."""
-    worksheet = get_spreadsheet().worksheet("prediction_logs")
+    """예측 로그 1줄을 'prediction_logs' 워크시트에 append (없으면 자동 생성)."""
+    worksheet = _get_or_create_worksheet(get_spreadsheet(), "prediction_logs")
     worksheet.append_row([
         datetime.now().isoformat(timespec="seconds"),
         decoder, distance, rounds, p_gate, p_meas, shots,
