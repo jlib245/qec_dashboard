@@ -115,6 +115,21 @@ class TestRunVisualizeMock(unittest.TestCase):
             result = run_visualize(**self.params)
         self.assertEqual(len(result["edges"]), 6)
 
+    def test_mwpm_decoder_method(self):
+        """기본(mwpm)은 correction_method='mwpm'"""
+        with self._patch_all():
+            result = run_visualize(**self.params)
+        self.assertEqual(result["correction_method"], "mwpm")
+
+    def test_lut_decoder_path(self):
+        """neural 모델 선택 시 LUT 경로 — _lut_correction 결과를 통과시킨다"""
+        with self._patch_all(), \
+             patch("app.visualize._lut_correction", return_value=([{"x": 1.0, "y": 1.0}], True)):
+            result = run_visualize(**self.params, decoder="models:/mlp_d3@champion")
+        self.assertEqual(result["correction_method"], "lut")
+        self.assertTrue(result["logical_error"])
+        self.assertEqual(result["corrected_qubits"], [{"x": 1.0, "y": 1.0}])
+
 
 if __name__ == "__main__":
     unittest.main()

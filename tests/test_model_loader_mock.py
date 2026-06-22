@@ -9,47 +9,81 @@ class TestModelLoaderMock(unittest.TestCase):
     """model_loader Mock 테스트. mlflow/qec_sim을 patch해 로직만 격리 검증한다."""
 
     def setUp(self):
-        ml._decoder = None  # lazy singleton 초기화
+        ml._cache.clear()
 
     def tearDown(self):
-        ml._decoder = None
+        ml._cache.clear()
 
-    def test_get_decoder_builds_neural_decoder_with_injected_core(self):
-        """registry core를 wrapper.core_model에 주입하고 NeuralDecoder로 감싼다"""
-        core = MagicMock()
-        wrapped = MagicMock()
+    def _exp(self, d=3, r=3):
+        exp = MagicMock()
+        exp.code.distance = d
+        exp.code.rounds = r
+        return exp
+
+    def test_load_builds_decoder_with_model_geometry(self):
+        """모델 run의 config.yaml에서 geometry를 읽고 core를 wrapper에 주입한다"""
         built = MagicMock()
+        wrapped = MagicMock()
         with patch.object(ml, "mlflow") as mock_mlflow, \
-             patch.object(ml, "ExperimentConfig"), \
+             patch.object(ml, "ExperimentConfig") as mock_exp_cls, \
              patch.object(ml, "ComponentFactory") as mock_factory, \
-             patch.object(ml, "NeuralDecoder", return_value=built) as mock_nd:
-            mock_mlflow.pytorch.load_model.return_value = core
+             patch.object(ml, "NeuralDecoder", return_value=built):
+            mock_mlflow.pytorch.load_model.return_value = MagicMock()
+            mock_mlflow.models.get_model_info.return_value = MagicMock(run_id="run123")
+            mock_mlflow.artifacts.download_artifacts.return_value = "/tmp/config.yaml"
+            mock_exp_cls.from_yaml.return_value = self._exp(3, 3)
             mock_factory.build_system.return_value = (None, wrapped)
-            dec = ml.get_decoder()
 
-        self.assertIs(dec, built)
+            rec = ml.load("models:/mlp_d3@champion")
+
+        self.assertIs(rec["decoder"], built)
+        self.assertEqual(rec["distance"], 3)
+        self.assertEqual(rec["rounds"], 3)
+        self.assertEqual(rec["run_id"], "run123")
         wrapped.core_model.load_state_dict.assert_called_once()
-        mock_nd.assert_called_once_with(model=wrapped)
 
-    def test_get_decoder_is_cached(self):
-        """두 번째 호출은 registry를 다시 로드하지 않고 캐시를 반환한다"""
+    def test_load_is_cached_per_uri(self):
+        """같은 uri 두 번째 호출은 registry를 다시 로드하지 않는다"""
         with patch.object(ml, "mlflow") as mock_mlflow, \
-             patch.object(ml, "ExperimentConfig"), \
+             patch.object(ml, "ExperimentConfig") as mock_exp_cls, \
              patch.object(ml, "ComponentFactory") as mock_factory, \
              patch.object(ml, "NeuralDecoder", return_value=MagicMock()):
+            mock_mlflow.pytorch.load_model.return_value = MagicMock()
+            mock_mlflow.models.get_model_info.return_value = MagicMock(run_id="r")
+            mock_mlflow.artifacts.download_artifacts.return_value = "/tmp/config.yaml"
+            mock_exp_cls.from_yaml.return_value = self._exp()
             mock_factory.build_system.return_value = (None, MagicMock())
-            d1 = ml.get_decoder()
-            d2 = ml.get_decoder()
 
-        self.assertIs(d1, d2)
-        mock_mlflow.pytorch.load_model.assert_called_once()
+            ml.load("models:/mlp_d3@champion")
+            ml.load("models:/mlp_d3@champion")
 
-    def test_get_model_info_returns_empty_on_failure(self):
-        """조회 실패 시 빈 dict을 반환한다 (서빙이 죽지 않도록)"""
+        self.assertEqual(mock_mlflow.pytorch.load_model.call_count, 1)
+
+    def test_list_models_returns_empty_on_failure(self):
+        """registry 조회 실패 시 빈 리스트 (UI는 MWPM만 보여줌)"""
         with patch.object(ml, "mlflow") as mock_mlflow:
             mock_mlflow.set_tracking_uri.side_effect = RuntimeError("no server")
-            info = ml.get_model_info()
-        self.assertEqual(info, {})
+            self.assertEqual(ml.list_models(), [])
+
+    def test_list_models_includes_geometry(self):
+        """등록 모델을 alias별로 나열하고 run params에서 geometry를 읽는다"""
+        m = MagicMock()
+        m.name = "mlp_d3"
+        m.aliases = {"champion": 1}
+        with patch.object(ml, "mlflow"), \
+             patch.object(ml, "MlflowClient") as mock_client_cls:
+            client = mock_client_cls.return_value
+            client.search_registered_models.return_value = [m]
+            client.get_model_version.return_value = MagicMock(run_id="r1")
+            run = MagicMock()
+            run.data.params = {"code.distance": "3", "code.rounds": "3"}
+            client.get_run.return_value = run
+            out = ml.list_models()
+
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["uri"], "models:/mlp_d3@champion")
+        self.assertEqual(out[0]["distance"], 3)
+        self.assertEqual(out[0]["rounds"], 3)
 
 
 if __name__ == "__main__":

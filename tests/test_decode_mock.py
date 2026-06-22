@@ -4,11 +4,11 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from app.decode import run_decode, run_compare
+from app.decode import run_decode
 
 
 class TestRunDecodeMock(unittest.TestCase):
-    """run_decode() Mock 테스트. qec_sim을 mock으로 격리하고 MODEL_MODE 분기를 검증한다."""
+    """run_decode() Mock 테스트. qec_sim을 mock으로 격리하고 디코더 선택 분기를 검증한다."""
 
     def setUp(self):
         shots = 10
@@ -40,59 +40,40 @@ class TestRunDecodeMock(unittest.TestCase):
             MWPMDecoder=Mock(return_value=self.mock_decoder),
         )
 
-    def test_mwpm_returns_expected_keys_and_ler(self):
-        """mwpm 모드(기본)는 mode/distance/rounds/ler을 반환하고 LER을 정확히 계산한다"""
+    def test_mwpm_uses_given_geometry(self):
+        """mwpm은 입력 distance/rounds를 그대로 사용하고 LER을 계산한다"""
         with self._patch():
-            result = run_decode(p_gate=0.01, p_meas=0.01, shots=10)
-        self.assertEqual(result["mode"], "mwpm")
-        self.assertEqual(result["distance"], 3)
-        self.assertEqual(result["rounds"], 3)
-        self.assertAlmostEqual(result["ler"], 0.3)
+            r = run_decode(decoder="mwpm", distance=5, rounds=5, p_gate=0.01, p_meas=0.01, shots=10)
+        self.assertEqual(r["decoder"], "mwpm")
+        self.assertEqual(r["distance"], 5)
+        self.assertEqual(r["rounds"], 5)
+        self.assertAlmostEqual(r["ler"], 0.3)
 
-    def test_mwpm_decode_batch_called_without_erasures(self):
+    def test_mwpm_decode_batch_single_arg(self):
         """erasure 경로 제거 — decode_batch는 syndromes 인자 하나만 받아야 한다"""
         with self._patch():
-            run_decode(p_gate=0.01, p_meas=0.01, shots=10)
+            run_decode(decoder="mwpm", distance=3, rounds=3, p_gate=0.01, p_meas=0.01, shots=10)
         args, _ = self.mock_decoder.decode_batch.call_args
         self.assertEqual(len(args), 1)
 
-    @patch("app.model_loader.get_decoder")
-    @patch("app.decode.config.MODEL_MODE", "neural")
-    def test_neural_uses_model_loader(self, mock_get_decoder):
-        """neural 모드는 model_loader.get_decoder()의 디코더로 LER을 계산한다"""
-        mock_get_decoder.return_value = self.mock_decoder
+    @patch("app.model_loader.load")
+    def test_neural_uses_model_geometry(self, mock_load):
+        """neural은 입력 distance를 무시하고 모델 자신의 geometry를 사용한다"""
+        mock_load.return_value = {
+            "decoder": self.mock_decoder, "distance": 3, "rounds": 3, "run_id": "abc12345",
+        }
         with self._patch():
-            result = run_decode(p_gate=0.01, p_meas=0.01, shots=10)
-        self.assertEqual(result["mode"], "neural")
-        self.assertAlmostEqual(result["ler"], 0.3)
-        mock_get_decoder.assert_called_once()
-
-    @patch("app.decode.config.MODEL_MODE", "bogus")
-    def test_unknown_mode_raises_value_error(self):
-        """알 수 없는 MODEL_MODE → ValueError"""
-        with self._patch():
-            with self.assertRaises(ValueError):
-                run_decode(p_gate=0.01, p_meas=0.01, shots=10)
-
-    @patch("app.model_loader.get_decoder")
-    def test_compare_returns_both_lers(self, mock_get_decoder):
-        """run_compare는 MWPM과 Neural LER을 함께 반환한다"""
-        mock_get_decoder.return_value = self.mock_decoder
-        with self._patch():
-            r = run_compare(p_gate=0.01, p_meas=0.01, shots=10)
-        self.assertAlmostEqual(r["mwpm_ler"], 0.3)
-        self.assertAlmostEqual(r["neural_ler"], 0.3)
-        self.assertIsNone(r["neural_error"])
-        self.assertEqual(r["distance"], 3)
-
-    @patch("app.model_loader.get_decoder", side_effect=RuntimeError("no model"))
-    def test_compare_neural_failure_is_graceful(self, mock_get_decoder):
-        """Neural 로드 실패 시 MWPM은 반환하고 neural_ler=None + neural_error로 알린다"""
-        with self._patch():
-            r = run_compare(p_gate=0.01, p_meas=0.01, shots=10)
-        self.assertAlmostEqual(r["mwpm_ler"], 0.3)
-        self.assertIsNone(r["neural_ler"])
-        self.assertIn("RuntimeError", r["neural_error"])
+            r = run_decode(
+                decoder="models:/mlp_d3@champion",
+                distance=5, rounds=5,  # 무시되어야 함
+                p_gate=0.01, p_meas=0.01, shots=10,
+            )
+        self.assertEqual(r["decoder"], "models:/mlp_d3@champion")
+        self.assertEqual(r["distance"], 3)   # 모델 geometry
+        self.assertEqual(r["rounds"], 3)
+        self.assertEqual(r["run_id"], "abc12345")
+        self.assertAlmostEqual(r["ler"], 0.3)
+        mock_load.assert_called_once_with("models:/mlp_d3@champion")
 
 
 if __name__ == "__main__":
