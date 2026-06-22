@@ -13,6 +13,8 @@ from app.decode import run_decode
 from app import config, model_loader
 from app.logging_config import setup_logging, get_logger
 from app.issue import create_github_issue
+from app.prediction_logger import save_prediction_log
+from app.retrain_issue import update_issue_state
 
 setup_logging()
 logger = get_logger("qec_dashboard")
@@ -190,7 +192,7 @@ async def decode(
         },
     )
 ):
-    return _handle(
+    result = _handle(
         "/decode",
         payload,
         lambda: run_decode(
@@ -202,3 +204,20 @@ async def decode(
             rounds=payload.get("rounds", config.FIXED_ROUNDS),
         ),
     )
+
+    # 성공 시(dict, ler 있음) 예측 로깅 + drift 감지 (best-effort — 실패가 응답에 영향 X)
+    if isinstance(result, dict) and result.get("ler") is not None:
+        try:
+            save_prediction_log(
+                result.get("decoder"), result.get("distance"), result.get("rounds"),
+                payload.get("p_gate"), payload.get("p_meas"),
+                payload.get("shots", 1000), result["ler"],
+            )
+            update_issue_state(
+                result.get("decoder"), result.get("distance"), result.get("rounds"),
+                result["ler"], config.LER_DRIFT_THRESHOLD,
+            )
+        except Exception as e:
+            logger.warning(f"prediction log/drift failed: {type(e).__name__}: {e}")
+
+    return result
