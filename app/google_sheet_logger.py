@@ -11,7 +11,7 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-HEADER = ["time", "decoder", "distance", "rounds", "p_gate", "p_meas", "shots", "ler"]
+HEADER = ["time", "decoder", "version", "distance", "rounds", "p_gate", "p_meas", "shots", "ler"]
 
 _spreadsheet = None
 
@@ -45,11 +45,11 @@ def _get_or_create_worksheet(spreadsheet, name):
         return ws
 
 
-def append_prediction_log(decoder, distance, rounds, p_gate, p_meas, shots, ler):
+def append_prediction_log(decoder, version, distance, rounds, p_gate, p_meas, shots, ler):
     """예측 로그 1줄을 'prediction_logs' 워크시트에 append (없으면 자동 생성)."""
     worksheet = _get_or_create_worksheet(get_spreadsheet(), "prediction_logs")
     worksheet.append_row([
         datetime.now().isoformat(timespec="seconds"),
-        decoder, distance, rounds, p_gate, p_meas, shots,
+        decoder, version, distance, rounds, p_gate, p_meas, shots,
         round(float(ler), 4),
     ])

@@ -61,6 +61,18 @@ def load(model_uri: str) -> dict:
         core = mlflow.pytorch.load_model(model_uri)
         run_id = mlflow.models.get_model_info(model_uri).run_id
 
+        # 실제로 서빙되는 버전 resolve (alias는 움직이므로 로드 시점 버전을 기록)
+        version = None
+        try:
+            ref = model_uri.replace("models:/", "")
+            if "@" in ref:
+                mname, alias = ref.split("@")
+                version = MlflowClient().get_model_version_by_alias(mname, alias).version
+            elif "/" in ref:  # models:/name/3
+                version = ref.split("/")[1]
+        except Exception:
+            pass
+
         try:
             cfg_path = mlflow.artifacts.download_artifacts(
                 run_id=run_id, artifact_path="config.yaml"
@@ -79,5 +91,6 @@ def load(model_uri: str) -> dict:
             "distance": exp.code.distance,
             "rounds": exp.code.rounds,
             "run_id": run_id,
+            "version": version,
         }
     return _cache[model_uri]

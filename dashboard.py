@@ -47,21 +47,32 @@ if pred_df is None or len(pred_df) == 0:
 st.caption(f"source: {source}")
 pred_df["ler"] = pd.to_numeric(pred_df["ler"], errors="coerce")
 
+
+def _model_label(row):
+    """모델 + version 표기 (alias 대신 버전). 예: mlp_d3_r3 v3 / mwpm."""
+    v = row.get("version")
+    if pd.notna(v) and str(v).strip() not in ("", "nan"):
+        return f"{row['decoder']} v{int(float(v))}"
+    return str(row["decoder"])
+
+
+pred_df["model"] = pred_df.apply(_model_label, axis=1)
+
 # -------- 운영 지표 --------
 st.subheader("운영 지표")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Requests", len(pred_df))
 col2.metric("Average LER", f"{pred_df['ler'].mean():.3%}")
 col3.metric("High LER (>0.1)", int((pred_df["ler"] > 0.1).sum()))
-col4.metric("Decoders Used", pred_df["decoder"].nunique())
+col4.metric("Models Used", pred_df["model"].nunique())
 
 # -------- LER 추이 --------
 st.subheader("LER Trend")
 st.line_chart(pred_df.reset_index(), x="index", y="ler")
 
-# -------- decoder별 사용량 --------
-st.subheader("Requests by Decoder")
-st.bar_chart(pred_df["decoder"].value_counts())
+# -------- 모델(버전)별 사용량 --------
+st.subheader("Requests by Model (version)")
+st.bar_chart(pred_df["model"].value_counts())
 
 # -------- geometry별 평균 LER --------
 if {"distance", "rounds"}.issubset(pred_df.columns):
