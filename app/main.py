@@ -171,11 +171,6 @@ def models():
     return {"decoders": items}
 
 
-def _default_decoder() -> str:
-    """payload에 decoder가 없을 때의 기본값 — 서버 MODEL_MODE를 따른다."""
-    return "mwpm" if config.MODEL_MODE == "mwpm" else config.MODEL_URI
-
-
 @app.post("/decode")
 async def decode(
     payload: dict = Body(
@@ -199,7 +194,7 @@ async def decode(
         "/decode",
         payload,
         lambda: run_decode(
-            decoder=payload.get("decoder") or _default_decoder(),
+            decoder=payload.get("decoder", "mwpm"),
             p_gate=payload["p_gate"],
             p_meas=payload["p_meas"],
             shots=payload.get("shots", 1000),
