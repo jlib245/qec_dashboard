@@ -13,7 +13,6 @@ class TestRunSimulation(unittest.TestCase):
             rounds=3,
             p_gate=0.01,
             p_meas=0.01,
-            p_leak=0.0,
             shots=200,
         )
 
@@ -40,7 +39,7 @@ class TestRunSimulation(unittest.TestCase):
         """노이즈가 0이면 ler은 0.0이어야 한다"""
         result = run_simulation(
             distance=3, rounds=3,
-            p_gate=0.0, p_meas=0.0, p_leak=0.0,
+            p_gate=0.0, p_meas=0.0,
             shots=100,
         )
         self.assertEqual(result["ler"], 0.0)
@@ -49,7 +48,7 @@ class TestRunSimulation(unittest.TestCase):
         """shots=1 최솟값에서도 정상 동작해야 한다"""
         result = run_simulation(
             distance=3, rounds=1,
-            p_gate=0.01, p_meas=0.01, p_leak=0.0,
+            p_gate=0.01, p_meas=0.01,
             shots=1,
         )
         self.assertEqual("ler" in result, True)
@@ -58,23 +57,16 @@ class TestRunSimulation(unittest.TestCase):
         """높은 노이즈에서는 ler이 0보다 커야 한다"""
         result = run_simulation(
             distance=3, rounds=3,
-            p_gate=0.2, p_meas=0.2, p_leak=0.0,
+            p_gate=0.2, p_meas=0.2,
             shots=500,
         )
         self.assertEqual(result["ler"] > 0.0, True)
-
-    def test_p_leak_default(self):
-        """p_leak=0.0 명시적으로 전달 시 정상 동작해야 한다"""
-        params = dict(self.base_params)
-        params["p_leak"] = 0.0
-        result = run_simulation(**params)
-        self.assertEqual("ler" in result, True)
 
     def test_larger_distance(self):
         """distance=5에서도 정상 범위의 ler을 반환해야 한다"""
         result = run_simulation(
             distance=5, rounds=3,
-            p_gate=0.01, p_meas=0.01, p_leak=0.0,
+            p_gate=0.01, p_meas=0.01,
             shots=50,
         )
         self.assertEqual(0.0 <= result["ler"] <= 1.0, True)

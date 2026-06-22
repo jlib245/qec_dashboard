@@ -32,16 +32,16 @@ jobs:
 
       - name: Install qec-sim (skip transitive deps)
         # intel-extension, pandas, jupyter 등 import 체인에 없는 무거운 deps 회피
-        run: pip install --no-deps git+https://github.com/jlib245/qec.git
+        run: pip install --no-deps git+https://github.com/jlib245/qec.git@v0.1.0
 
       - name: Install qec-sim runtime essentials
         run: pip install stim pymatching numpy pyyaml
 
       - name: Install dashboard deps
-        run: pip install fastapi uvicorn pytest hypothesis httpx
+        run: pip install fastapi uvicorn pytest hypothesis httpx requests
 
       - name: Verify qec-sim importable
-        run: python -c "from qec_sim.decoders.mwpm import ErasureMWPM; print('qec-sim OK')"
+        run: python -c "from qec_sim.decoders.mwpm import MWPMDecoder; print('qec-sim OK')"
 
       - name: Run all tests
         run: pytest tests/ -v

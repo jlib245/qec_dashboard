@@ -15,12 +15,12 @@ class TestMainRoutes(unittest.TestCase):
         self.client = TestClient(app)
         self.simulate_payload = {
             "distance": 3, "rounds": 3,
-            "p_gate": 0.01, "p_meas": 0.01, "p_leak": 0.0,
+            "p_gate": 0.01, "p_meas": 0.01,
             "shots": 100,
         }
         self.visualize_payload = {
             "distance": 3, "rounds": 3,
-            "p_gate": 0.01, "p_meas": 0.01, "p_leak": 0.0,
+            "p_gate": 0.01, "p_meas": 0.01,
         }
 
     def test_home_serves_html(self):
@@ -48,13 +48,28 @@ class TestMainRoutes(unittest.TestCase):
 
     @patch("app.main.run_simulation")
     def test_simulate_default_values(self, mock_run):
-        """payload에 p_leak, shots 없으면 기본값으로 호출되어야 한다"""
+        """payload에 shots 없으면 기본값으로 호출되어야 한다"""
         mock_run.return_value = {"ler": 0.0}
         minimal = {"distance": 3, "rounds": 3, "p_gate": 0.01, "p_meas": 0.01}
         self.client.post("/simulate", json=minimal)
         kwargs = mock_run.call_args.kwargs
-        self.assertEqual(kwargs["p_leak"], 0.0)
         self.assertEqual(kwargs["shots"], 1000)
+
+    @patch("app.main.run_simulation")
+    def test_simulate_failure_returns_500(self, mock_run):
+        """run_*가 예외를 던지면 500 응답을 반환해야 한다"""
+        mock_run.side_effect = RuntimeError("boom")
+        response = self.client.post("/simulate", json=self.simulate_payload)
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["error"], "Internal Server Error")
+
+    @patch("app.main.create_github_issue")
+    @patch("app.main.run_simulation")
+    def test_simulate_failure_creates_issue(self, mock_run, mock_issue):
+        """run_*가 예외를 던지면 GitHub Issue 생성이 호출되어야 한다"""
+        mock_run.side_effect = RuntimeError("boom")
+        self.client.post("/simulate", json=self.simulate_payload)
+        mock_issue.assert_called_once()
 
     @patch("app.main.run_visualize")
     def test_visualize_returns_200(self, mock_run):
@@ -77,6 +92,16 @@ class TestMainRoutes(unittest.TestCase):
         response = self.client.post("/stats", json=self.simulate_payload)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["n_data_qubits"], 9)
+
+    @patch("app.main.run_decode")
+    def test_decode_returns_200(self, mock_run):
+        """POST /decode 200 응답 + mode 통과"""
+        mock_run.return_value = {"mode": "mwpm", "distance": 3, "rounds": 3, "ler": 0.1}
+        response = self.client.post(
+            "/decode", json={"p_gate": 0.01, "p_meas": 0.01, "shots": 100}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "mwpm")
 
 
 if __name__ == "__main__":

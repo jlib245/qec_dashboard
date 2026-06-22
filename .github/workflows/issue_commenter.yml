@@ -1,0 +1,23 @@
+# .github/workflows/issue_commenter.yml
+name: Auto Comment on Issue
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on new issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PERSONAL_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.payload.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "감사합니다. 자동 생성된 장애 리포트를 확인 후 처리하겠습니다."
+            })

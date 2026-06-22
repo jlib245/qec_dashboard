@@ -23,7 +23,7 @@ jobs:
       - name: Install minimal deps (qec-sim excluded)
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi uvicorn numpy pytest pytest-cov hypothesis httpx
+          pip install fastapi uvicorn numpy pytest pytest-cov hypothesis httpx requests
 
       - name: Run mock tests with coverage (80% gate)
         run: |
@@ -32,4 +32,7 @@ jobs:
             tests/test_main.py \
             tests/test_stats_mock.py \
             tests/test_visualize_mock.py \
+            tests/test_issue.py \
+            tests/test_decode_mock.py \
+            tests/test_model_loader_mock.py \
             -v --cov=app --cov-report=term-missing --cov-fail-under=80

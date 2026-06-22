@@ -7,6 +7,10 @@ venv/
 .claude/
 .pytest_cache/
 mlruns/
+mlartifacts/
+results/
+*.db
+*.sha256
 *.log
 .DS_Store
 .coverage

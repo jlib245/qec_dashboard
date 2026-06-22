@@ -14,7 +14,7 @@ class TestRunVisualizeMock(unittest.TestCase):
     def setUp(self):
         self.params = dict(
             distance=3, rounds=2,
-            p_gate=0.01, p_meas=0.01, p_leak=0.0,
+            p_gate=0.01, p_meas=0.01,
         )
 
         # Mock 회로: 4 data qubit + 2 ancilla (Z 1, X 1)
@@ -43,7 +43,7 @@ class TestRunVisualizeMock(unittest.TestCase):
         # 6 qubit, qid 0만 flipped
         self.mock_flip_sim.peek_pauli_flips.return_value = [np.array([1, 0, 0, 0, 0, 0])]
 
-        # ErasureMWPM
+        # MWPMDecoder
         self.mock_decoder = Mock()
         self.mock_decoder.decode_single_with_correction.return_value = {
             "corrected_fault_ids": [0],
@@ -56,7 +56,7 @@ class TestRunVisualizeMock(unittest.TestCase):
         return patch.multiple(
             "app.visualize",
             stim=Mock(FlipSimulator=Mock(return_value=self.mock_flip_sim)),
-            ErasureMWPM=Mock(return_value=self.mock_decoder),
+            MWPMDecoder=Mock(return_value=self.mock_decoder),
             build_circuit=Mock(return_value=self.mock_builder),
         )
 

@@ -15,12 +15,12 @@ try:
     from qec_sim.config.schema import CodeParams, NoiseParams
     from qec_sim.circuit.registry import build_circuit
     from qec_sim.circuit.simulator import CircuitNoiseSimulator
-    from qec_sim.decoders.mwpm import ErasureMWPM
+    from qec_sim.decoders.mwpm import MWPMDecoder
 except ImportError:
     # qec-sim 미설치 환경(mock CI 등): kwargs를 attr로 저장하는 stub만 두고,
     # 실제 호출되는 함수/클래스는 None — 테스트에서 patch되거나, 호출 시 에러로 드러나야 함
     CodeParams = NoiseParams = SimpleNamespace
-    build_circuit = CircuitNoiseSimulator = ErasureMWPM = None
+    build_circuit = CircuitNoiseSimulator = MWPMDecoder = None
 
 
 def run_simulation(
@@ -28,7 +28,6 @@ def run_simulation(
     rounds: int,
     p_gate: float,
     p_meas: float,
-    p_leak: float = 0.0,
     shots: int = 1000,
 ) -> dict:
     """
@@ -41,10 +40,9 @@ def run_simulation(
     """
     p_gate = _sanitize_prob(p_gate)
     p_meas = _sanitize_prob(p_meas)
-    p_leak = _sanitize_prob(p_leak)
 
     code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
-    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0, p_leak=p_leak)
+    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0)
 
     builder = build_circuit(code_params.name, code_params, noise_params)
     circuit = builder.build()
@@ -54,11 +52,10 @@ def run_simulation(
 
     syndromes = data["syndromes"]      # (shots, num_detectors)
     observables = data["observables"]  # (shots, num_observables)
-    erasures = data["erasures"]        # (shots, num_detectors)
 
     error_model = circuit.detector_error_model(decompose_errors=True)
-    decoder = ErasureMWPM(error_model)
-    predictions = decoder.decode_batch(syndromes, erasures)
+    decoder = MWPMDecoder(error_model)
+    predictions = decoder.decode_batch(syndromes)
 
     ler = float((predictions != observables).any(axis=1).mean())
 
