@@ -12,10 +12,10 @@ noise:
 
 training:
   data_mode: "online"
-  train_steps: 20000
-  val_steps: 2000
+  train_steps: 40000
+  val_steps: 4000
   chunk_size: 10000
-  epochs: 15
+  epochs: 30
   batch_size: 1024
   seed: 42
   num_workers: 0      # WSL2에서 online 시뮬레이터 + 멀티프로세싱 DataLoader가 stall → 메인 프로세스 생성
@@ -34,7 +34,7 @@ training:
 model:
   name: "mlp"
   kwargs:
-    hidden_dim: 256   # input_dim/num_observables/code_distance는 factory가 주입
+    hidden_dim: 512   # input_dim/num_observables/code_distance는 factory가 주입
 
 decoder:
   name: "neural_decoder"
@@ -46,10 +46,10 @@ simulation:
 
 mlflow:
   enable: true
-  experiment_name: "surface_code_d3"
+  experiment_name: "surface_code_d3_r3"   # geometry=(distance,rounds) 단위로 분리
   tracking_uri: "sqlite:///mlruns.db"   # placeholder — 배포 시 MLFLOW_TRACKING_URI env로 덮어씀
   register_model: true
-  registered_model_name: "mlp_d3"
+  registered_model_name: "mlp_d3_r3"
   register_alias: "challenger"          # 새 학습은 항상 challenger
   tags:
     project: "qec_dashboard"

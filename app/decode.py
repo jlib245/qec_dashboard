@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from app import config
 from app.simulate import _sanitize_prob
 
 try:
@@ -17,39 +16,46 @@ except ImportError:
     build_circuit = CircuitNoiseSimulator = MWPMDecoder = None
 
 
-def run_decode(p_gate: float, p_meas: float, shots: int = 1000) -> dict:
-    """고정 geometry(config.FIXED_DISTANCE/ROUNDS)에서 MODEL_MODE 디코더로 LER 계산.
+def _generate(distance: int, rounds: int, p_gate: float, p_meas: float, shots: int):
+    """주어진 geometry/noise로 회로 생성 + shots만큼 샘플링."""
+    code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
+    noise_params = NoiseParams(
+        p_gate=_sanitize_prob(p_gate), p_meas=_sanitize_prob(p_meas), p_corr=0.0
+    )
+    circuit = build_circuit(code_params.name, code_params, noise_params).build()
+    data = CircuitNoiseSimulator(circuit, noise_params).generate_data(shots=shots)
+    return circuit, data["syndromes"], data["observables"]
 
-    동일 syndrome에 대해 MODEL_MODE에 따라 디코더만 바꿔 LER을 잰다 (mwpm vs neural 비교용).
+
+def run_decode(
+    decoder: str,
+    p_gate: float,
+    p_meas: float,
+    shots: int = 1000,
+    distance: int = 3,
+    rounds: int = 3,
+) -> dict:
+    """선택한 디코더로 LER 계산.
+
+    decoder == "mwpm":  입력 distance/rounds에서 MWPM (어떤 geometry든 가능).
+    decoder == model_uri ("models:/name@alias"):  registry에서 그 neural 모델 로드.
+        geometry는 모델 자신이 결정(입력 distance/rounds 무시) — NN은 학습 geometry 전용.
 
     Returns:
-        {"mode": str, "distance": int, "rounds": int, "ler": float}
+        {"decoder", "distance", "rounds", "ler", ("run_id" — neural만)}
     """
-    distance = config.FIXED_DISTANCE
-    rounds = config.FIXED_ROUNDS
-
-    p_gate = _sanitize_prob(p_gate)
-    p_meas = _sanitize_prob(p_meas)
-
-    code_params = CodeParams(name="surface_code", distance=distance, rounds=rounds)
-    noise_params = NoiseParams(p_gate=p_gate, p_meas=p_meas, p_corr=0.0)
-    circuit = build_circuit(code_params.name, code_params, noise_params).build()
-
-    simulator = CircuitNoiseSimulator(circuit, noise_params)
-    data = simulator.generate_data(shots=shots)
-    syndromes = data["syndromes"]
-    observables = data["observables"]
-
-    mode = config.MODEL_MODE
-    if mode == "mwpm":
+    if decoder == "mwpm":
+        circuit, syndromes, observables = _generate(distance, rounds, p_gate, p_meas, shots)
         error_model = circuit.detector_error_model(decompose_errors=True)
-        predictions = MWPMDecoder(error_model).decode_batch(syndromes)
-    elif mode == "neural":
-        # mlflow는 neural 경로에서만 필요 → lazy import (mwpm-only 환경은 영향 없음).
-        from app import model_loader
-        predictions = model_loader.get_decoder().decode_batch(syndromes, batch_size=4096)
-    else:
-        raise ValueError(f"알 수 없는 MODEL_MODE: '{mode}' (mwpm | neural)")
+        preds = MWPMDecoder(error_model).decode_batch(syndromes)
+        ler = float((preds != observables).any(axis=1).mean())
+        return {"decoder": "mwpm", "distance": distance, "rounds": rounds, "ler": ler}
 
-    ler = float((predictions != observables).any(axis=1).mean())
-    return {"mode": mode, "distance": distance, "rounds": rounds, "ler": ler}
+    # neural: 모델이 자기 geometry를 결정 (registry의 config.yaml 기반)
+    from app import model_loader
+    rec = model_loader.load(decoder)
+    d, r = rec["distance"], rec["rounds"]
+    _, syndromes, observables = _generate(d, r, p_gate, p_meas, shots)
+    preds = rec["decoder"].decode_batch(syndromes, batch_size=4096)
+    ler = float((preds != observables).any(axis=1).mean())
+    return {"decoder": decoder, "distance": d, "rounds": r, "ler": ler, "run_id": rec["run_id"]}

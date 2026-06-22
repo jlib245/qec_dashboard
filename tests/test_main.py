@@ -95,13 +95,22 @@ class TestMainRoutes(unittest.TestCase):
 
     @patch("app.main.run_decode")
     def test_decode_returns_200(self, mock_run):
-        """POST /decode 200 응답 + mode 통과"""
-        mock_run.return_value = {"mode": "mwpm", "distance": 3, "rounds": 3, "ler": 0.1}
+        """POST /decode 200 응답 + 선택한 decoder 통과"""
+        mock_run.return_value = {"decoder": "mwpm", "distance": 3, "rounds": 3, "ler": 0.1}
         response = self.client.post(
-            "/decode", json={"p_gate": 0.01, "p_meas": 0.01, "shots": 100}
+            "/decode", json={"decoder": "mwpm", "p_gate": 0.01, "p_meas": 0.01, "shots": 100}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["mode"], "mwpm")
+        self.assertEqual(response.json()["decoder"], "mwpm")
+
+    @patch("app.main.model_loader")
+    def test_models_lists_mwpm_baseline(self, mock_loader):
+        """GET /models는 최소한 MWPM 베이스라인을 포함한다 (registry 비어도)"""
+        mock_loader.list_models.return_value = []
+        response = self.client.get("/models")
+        self.assertEqual(response.status_code, 200)
+        ids = [d["id"] for d in response.json()["decoders"]]
+        self.assertIn("mwpm", ids)
 
 
 if __name__ == "__main__":

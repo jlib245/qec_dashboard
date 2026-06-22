@@ -47,6 +47,7 @@
   </div>
 
   <div style="display:flex;gap:12px;align-items:center;">
+    <select id="decoder-select" style="padding:6px;"></select>
     <button id="run-btn" onclick="runSimulation()">시뮬레이션 실행</button>
     <button id="stats-btn" onclick="runStats()" style="background:#0891b2;">Physical Qubit 에러 통계</button>
     <button id="viz-btn" onclick="runVisualize()" style="background:#7c3aed;">단일 Shot 시각화</button>
@@ -65,12 +66,15 @@
   <script>
     async function runSimulation() {
       const btn = document.getElementById("run-btn");
+      const sel = document.getElementById("decoder-select");
       const errEl = document.getElementById("error-msg");
       errEl.innerText = "";
       btn.disabled = true;
       btn.innerText = "실행 중...";
 
+      // 선택한 디코더로 시뮬레이션 (mwpm은 입력 geometry, neural은 모델 geometry)
       const payload = {
+        decoder:  sel.value,
         distance: parseInt(document.getElementById("distance").value),
         rounds:   parseInt(document.getElementById("rounds").value),
         shots:    parseInt(document.getElementById("shots").value),
@@ -79,19 +83,18 @@
       };
 
       try {
-        const res = await fetch("/simulate", {
+        const res = await fetch("/decode", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-        const data = await res.json();
-
-        // LER 표시
+        const d = await res.json();
+        const label = sel.selectedOptions[0] ? sel.selectedOptions[0].text : d.decoder;
         document.getElementById("result-ler").innerHTML =
-          `<b>LER:</b> ${(data.ler * 100).toFixed(2)}%`;
-
-
+          `<b>디코더:</b> ${label} &nbsp;|&nbsp; <b>geometry:</b> d=${d.distance}/r=${d.rounds}<br>` +
+          `<b>LER:</b> ${(d.ler * 100).toFixed(2)}%` +
+          (d.run_id ? ` &nbsp;(run ${d.run_id.slice(0, 8)})` : "");
       } catch (e) {
         errEl.innerText = e.message;
       } finally {
@@ -99,6 +102,32 @@
         btn.innerText = "시뮬레이션 실행";
       }
     }
+
+    // MWPM(distance=null=모든 geometry) + registry 모델들. 현재 d/r에 맞는 것만 표시.
+    let allDecoders = [{ id: "mwpm", label: "MWPM (baseline)", distance: null, rounds: null }];
+
+    function renderDecoders() {
+      const sel = document.getElementById("decoder-select");
+      const d = parseInt(document.getElementById("distance").value);
+      const r = parseInt(document.getElementById("rounds").value);
+      const opts = allDecoders.filter(m => m.distance == null || (m.distance === d && m.rounds === r));
+      sel.innerHTML = opts.map(m => `<option value="${m.id}">${m.label}</option>`).join("");
+    }
+
+    async function loadModels() {
+      try {
+        const res = await fetch("/models");
+        allDecoders = (await res.json()).decoders;
+      } catch (e) {
+        allDecoders = [{ id: "mwpm", label: "MWPM (baseline)", distance: null, rounds: null }];
+      }
+      renderDecoders();
+      // distance/rounds 바뀌면 드롭다운 갱신
+      ["distance", "rounds"].forEach(id =>
+        document.getElementById(id).addEventListener("change", renderDecoders));
+    }
+
+    loadModels();
 
     async function runStats() {
       const btn = document.getElementById("stats-btn");
@@ -259,6 +288,7 @@
       btn.innerText = "실행 중...";
 
       const payload = {
+        decoder:  document.getElementById("decoder-select").value,
         distance: parseInt(document.getElementById("distance").value),
         rounds:   parseInt(document.getElementById("rounds").value),
         p_gate:   parseFloat(document.getElementById("p_gate").value),
@@ -275,8 +305,13 @@
         const data = await res.json();
 
         const logicalError = data.logical_error ? "⚠️ 논리 에러 발생" : "✅ 논리 에러 없음";
+        const method = data.correction_method === "lut" ? "LUT 보정" : "MWPM 보정";
         document.getElementById("result-viz").innerHTML =
-          `단일 Shot: <b>${logicalError}</b> &nbsp;|&nbsp; 빨간=실제 에러 / 주황=correction 적용 / fired = 이전 round 관측값과 XOR`;
+          `단일 Shot: <b>${logicalError}</b> &nbsp;|&nbsp; 보정: <b>${method}</b><br>` +
+          `<span style="color:#ef4444">빨강</span>=에러 data qubit · ` +
+          `<span style="color:#2563eb;font-weight:bold">파란 테두리</span>=보정 적용 · ` +
+          `<span style="color:#f59e0b">주황</span>=fired ancilla(syndrome) · ` +
+          `<span style="color:#10b981">초록</span>/<span style="color:#8b5cf6">보라</span>=정상 X/Z stabilizer`;
 
         // visualize 데이터로 layout 업데이트 (round 버튼 포함)
         _layoutData = data;

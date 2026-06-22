@@ -10,6 +10,7 @@ from app.simulate import run_simulation
 from app.visualize import run_visualize
 from app.stats import run_stats
 from app.decode import run_decode
+from app import config, model_loader
 from app.logging_config import setup_logging, get_logger
 from app.issue import create_github_issue
 
@@ -119,6 +120,7 @@ async def visualize(
             rounds=payload["rounds"],
             p_gate=payload["p_gate"],
             p_meas=payload["p_meas"],
+            decoder=payload.get("decoder", "mwpm"),
         ),
     )
 
@@ -154,14 +156,32 @@ async def stats(
     )
 
 
+@app.get("/models")
+def models():
+    """사용 가능한 디코더 목록 — MWPM(베이스라인) + MLflow registry의 등록 모델들."""
+    # distance=None → 모든 geometry에서 사용 가능(MWPM). neural은 자기 geometry만.
+    items = [{"id": "mwpm", "label": "MWPM (baseline)", "distance": None, "rounds": None}]
+    for m in model_loader.list_models():
+        items.append({
+            "id": m["uri"],
+            "label": f'{m["name"]}@{m["alias"]} (v{m["version"]})',
+            "distance": m["distance"],
+            "rounds": m["rounds"],
+        })
+    return {"decoders": items}
+
+
 @app.post("/decode")
 async def decode(
     payload: dict = Body(
         ...,
         examples={
             "default": {
-                "summary": "기본 예시 (geometry는 서버 고정 d=3/r=3)",
+                "summary": "디코더 선택 (mwpm은 distance 적용, neural은 모델 geometry 사용)",
                 "value": {
+                    "decoder": "mwpm",
+                    "distance": 3,
+                    "rounds": 3,
                     "p_gate": 0.01,
                     "p_meas": 0.01,
                     "shots": 1000,
@@ -174,8 +194,11 @@ async def decode(
         "/decode",
         payload,
         lambda: run_decode(
+            decoder=payload.get("decoder", "mwpm"),
             p_gate=payload["p_gate"],
             p_meas=payload["p_meas"],
             shots=payload.get("shots", 1000),
+            distance=payload.get("distance", config.FIXED_DISTANCE),
+            rounds=payload.get("rounds", config.FIXED_ROUNDS),
         ),
     )
