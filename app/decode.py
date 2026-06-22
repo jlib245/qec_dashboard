@@ -58,4 +58,7 @@ def run_decode(
     _, syndromes, observables = _generate(d, r, p_gate, p_meas, shots)
     preds = rec["decoder"].decode_batch(syndromes, batch_size=4096)
     ler = float((preds != observables).any(axis=1).mean())
-    return {"decoder": decoder, "distance": d, "rounds": r, "ler": ler, "run_id": rec["run_id"]}
+    return {
+        "decoder": decoder, "distance": d, "rounds": r, "ler": ler,
+        "run_id": rec["run_id"], "version": rec.get("version"),
+    }

@@ -208,8 +208,13 @@ async def decode(
 
     # 성공 시(dict, ler 있음) 예측 로깅 + drift 감지 (best-effort — 실패가 응답에 영향 X)
     if isinstance(result, dict) and result.get("ler") is not None:
+        # 모니터링엔 alias(champion/challenger) 대신 모델 이름 + version만 표기
+        dec = result.get("decoder")
+        if dec and dec.startswith("models:/"):
+            dec = dec[len("models:/"):].split("@")[0].split("/")[0]
         args = (
-            result.get("decoder"), result.get("distance"), result.get("rounds"),
+            dec, result.get("version"),
+            result.get("distance"), result.get("rounds"),
             payload.get("p_gate"), payload.get("p_meas"),
             payload.get("shots", 1000), result["ler"],
         )
@@ -221,7 +226,7 @@ async def decode(
             else:
                 save_prediction_log(*args)
             update_issue_state(
-                result.get("decoder"), result.get("distance"), result.get("rounds"),
+                dec, result.get("distance"), result.get("rounds"),
                 result["ler"], config.LER_DRIFT_THRESHOLD,
             )
         except Exception as e:
