@@ -2,7 +2,7 @@
 
 표면 부호(surface code) **양자 오류정정(QEC) 시뮬레이터**를 FastAPI로 래핑한 웹 대시보드.
 MLflow로 학습한 신경망 디코더(MLP)를 MWPM 베이스라인과 함께 서빙한다.
-(전남대 AI융합대학 DevOps/MLOps 프로젝트)
+(전남대 AI융합대학 인공지능소프트웨어개발및운영파이프라인 수업 프로젝트)
 
 - 배포: https://qec-dashboard.onrender.com
 
