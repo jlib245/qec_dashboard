@@ -4,6 +4,9 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()  # .env의 GOOGLE_SHEET_NAME / GOOGLE_SERVICE_ACCOUNT_FILE 읽기
 
 PREDICTION_LOG_PATH = Path("logs/predictions.csv")
 SCOPE = [
