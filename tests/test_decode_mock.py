@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from app.decode import run_decode
+from app.decode import run_decode, run_compare
 
 
 class TestRunDecodeMock(unittest.TestCase):
@@ -73,6 +73,26 @@ class TestRunDecodeMock(unittest.TestCase):
         with self._patch():
             with self.assertRaises(ValueError):
                 run_decode(p_gate=0.01, p_meas=0.01, shots=10)
+
+    @patch("app.model_loader.get_decoder")
+    def test_compare_returns_both_lers(self, mock_get_decoder):
+        """run_compare는 MWPM과 Neural LER을 함께 반환한다"""
+        mock_get_decoder.return_value = self.mock_decoder
+        with self._patch():
+            r = run_compare(p_gate=0.01, p_meas=0.01, shots=10)
+        self.assertAlmostEqual(r["mwpm_ler"], 0.3)
+        self.assertAlmostEqual(r["neural_ler"], 0.3)
+        self.assertIsNone(r["neural_error"])
+        self.assertEqual(r["distance"], 3)
+
+    @patch("app.model_loader.get_decoder", side_effect=RuntimeError("no model"))
+    def test_compare_neural_failure_is_graceful(self, mock_get_decoder):
+        """Neural 로드 실패 시 MWPM은 반환하고 neural_ler=None + neural_error로 알린다"""
+        with self._patch():
+            r = run_compare(p_gate=0.01, p_meas=0.01, shots=10)
+        self.assertAlmostEqual(r["mwpm_ler"], 0.3)
+        self.assertIsNone(r["neural_ler"])
+        self.assertIn("RuntimeError", r["neural_error"])
 
 
 if __name__ == "__main__":

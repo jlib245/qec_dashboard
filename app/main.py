@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.simulate import run_simulation
 from app.visualize import run_visualize
 from app.stats import run_stats
-from app.decode import run_decode
+from app.decode import run_decode, run_compare
 from app.logging_config import setup_logging, get_logger
 from app.issue import create_github_issue
 
@@ -174,6 +174,33 @@ async def decode(
         "/decode",
         payload,
         lambda: run_decode(
+            p_gate=payload["p_gate"],
+            p_meas=payload["p_meas"],
+            shots=payload.get("shots", 1000),
+        ),
+    )
+
+
+@app.post("/compare")
+async def compare(
+    payload: dict = Body(
+        ...,
+        examples={
+            "default": {
+                "summary": "MWPM vs Neural 비교 (geometry 서버 고정 d=3/r=3)",
+                "value": {
+                    "p_gate": 0.01,
+                    "p_meas": 0.01,
+                    "shots": 2000,
+                },
+            }
+        },
+    )
+):
+    return _handle(
+        "/compare",
+        payload,
+        lambda: run_compare(
             p_gate=payload["p_gate"],
             p_meas=payload["p_meas"],
             shots=payload.get("shots", 1000),

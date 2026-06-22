@@ -103,6 +103,19 @@ class TestMainRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["mode"], "mwpm")
 
+    @patch("app.main.run_compare")
+    def test_compare_returns_200(self, mock_run):
+        """POST /compare 200 응답 + 두 디코더 LER 통과"""
+        mock_run.return_value = {
+            "distance": 3, "rounds": 3, "shots": 100,
+            "mwpm_ler": 0.1, "neural_ler": 0.15, "neural_error": None,
+        }
+        response = self.client.post(
+            "/compare", json={"p_gate": 0.01, "p_meas": 0.01, "shots": 100}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mwpm_ler"], 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

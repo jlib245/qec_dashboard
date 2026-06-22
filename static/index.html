@@ -50,11 +50,13 @@
     <button id="run-btn" onclick="runSimulation()">시뮬레이션 실행</button>
     <button id="stats-btn" onclick="runStats()" style="background:#0891b2;">Physical Qubit 에러 통계</button>
     <button id="viz-btn" onclick="runVisualize()" style="background:#7c3aed;">단일 Shot 시각화</button>
+    <button id="compare-btn" onclick="runCompare()" style="background:#16a34a;">MWPM vs Neural 비교</button>
   </div>
   <div id="error-msg"></div>
   <div id="result-ler"></div>
   <div id="result-stats" style="font-size:1.1rem;margin:8px 0;"></div>
   <div id="result-viz" style="font-size:1.1rem;margin:8px 0;"></div>
+  <div id="result-compare" style="font-size:1.1rem;margin:8px 0;"></div>
   <div class="grids">
     <div>
       <div id="plot-layout"></div>
@@ -97,6 +99,47 @@
       } finally {
         btn.disabled = false;
         btn.innerText = "시뮬레이션 실행";
+      }
+    }
+
+    async function runCompare() {
+      const btn = document.getElementById("compare-btn");
+      const errEl = document.getElementById("error-msg");
+      const out = document.getElementById("result-compare");
+      errEl.innerText = "";
+      out.innerHTML = "";
+      btn.disabled = true;
+      btn.innerText = "비교 중...";
+
+      // geometry는 서버 고정(d=3/r=3) — p_gate/p_meas/shots만 전송
+      const payload = {
+        shots:  parseInt(document.getElementById("shots").value),
+        p_gate: parseFloat(document.getElementById("p_gate").value),
+        p_meas: parseFloat(document.getElementById("p_meas").value),
+      };
+
+      try {
+        const res = await fetch("/compare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+        const d = await res.json();
+
+        const mwpm = `${(d.mwpm_ler * 100).toFixed(2)}%`;
+        const neural = d.neural_ler != null
+          ? `${(d.neural_ler * 100).toFixed(2)}%`
+          : `<span style="color:#b91c1c;">미사용 (${d.neural_error || "모델 미설정"})</span>`;
+        out.innerHTML =
+          `<b>비교</b> (d=${d.distance}/r=${d.rounds}, shots=${d.shots})<br>` +
+          `&nbsp;&nbsp;MWPM LER: <b>${mwpm}</b><br>` +
+          `&nbsp;&nbsp;Neural LER: <b>${neural}</b>`;
+      } catch (e) {
+        errEl.innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "MWPM vs Neural 비교";
       }
     }
 
