@@ -1,4 +1,5 @@
 # app/main.py
+import os
 import traceback
 from typing import Callable
 
@@ -207,12 +208,18 @@ async def decode(
 
     # 성공 시(dict, ler 있음) 예측 로깅 + drift 감지 (best-effort — 실패가 응답에 영향 X)
     if isinstance(result, dict) and result.get("ler") is not None:
+        args = (
+            result.get("decoder"), result.get("distance"), result.get("rounds"),
+            payload.get("p_gate"), payload.get("p_meas"),
+            payload.get("shots", 1000), result["ler"],
+        )
         try:
-            save_prediction_log(
-                result.get("decoder"), result.get("distance"), result.get("rounds"),
-                payload.get("p_gate"), payload.get("p_meas"),
-                payload.get("shots", 1000), result["ler"],
-            )
+            # Google Sheets 설정 시 영속 로깅(운영/Render), 아니면 로컬 CSV(시연용)
+            if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
+                from app.google_sheet_logger import append_prediction_log
+                append_prediction_log(*args)
+            else:
+                save_prediction_log(*args)
             update_issue_state(
                 result.get("decoder"), result.get("distance"), result.get("rounds"),
                 result["ler"], config.LER_DRIFT_THRESHOLD,

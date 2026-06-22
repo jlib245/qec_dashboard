@@ -16,3 +16,4 @@ results/
 .coverage
 .hypothesis
 logs/
+google_key.json
